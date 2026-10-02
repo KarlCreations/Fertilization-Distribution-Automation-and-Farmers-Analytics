@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Bell,
     Boxes,
@@ -7,29 +7,17 @@ import {
     CircleHelp,
     ClipboardList,
     Factory,
-    LayoutDashboard,
     Leaf,
-    LogOut,
     Menu,
     Package,
     Search,
-    Settings,
-    Sprout,
     Truck,
     UsersRound,
     WalletCards,
 } from 'lucide-react';
 
+import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
-
-const navigation = [
-    { label: 'Overview', icon: LayoutDashboard, href: route('dashboard'), active: true },
-    { label: 'Farmer registry', icon: Sprout, href: route('farmer-registry') },
-    { label: 'Inventory', icon: Package, href: route('inventory-warehouses') },
-    { label: 'Distribution', icon: Truck },
-    { label: 'Financials', icon: WalletCards },
-    { label: 'Analytics', icon: ChartNoAxesCombined },
-];
 
 const metrics = [
     { label: 'Registered farmers', icon: UsersRound, accent: 'text-[#175cd3] bg-[#eff8ff]' },
@@ -123,39 +111,7 @@ export default function Dashboard() {
                 </header>
 
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-                    <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
-                        <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
-                        <nav className="grid gap-1" aria-label="Primary navigation">
-                            {navigation.map(({ label, icon: Icon, href, active }) => (
-                                <Link
-                                    key={label}
-                                    href={href ?? '#'}
-                                    className={`flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium ${active ? 'bg-[#eff4ff] text-[#175cd3]' : 'text-[#475467] hover:bg-[#f9fafb]'}`}
-                                >
-                                    <Icon className="size-4" />
-                                    {label}
-                                </Link>
-                            ))}
-                        </nav>
-                        <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                            <button
-                                type="button"
-                                className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                            >
-                                <Settings className="size-4" />
-                                Settings
-                            </button>
-                            <Link
-                                href={route('logout')}
-                                method="post"
-                                as="button"
-                                className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                            >
-                                <LogOut className="size-4" />
-                                Sign out
-                            </Link>
-                        </div>
-                    </aside>
+                    <WorkspaceSidebar />
 
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">

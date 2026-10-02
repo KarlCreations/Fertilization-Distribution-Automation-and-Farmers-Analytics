@@ -20,10 +20,12 @@ import {
     ShieldCheck,
     SlidersHorizontal,
     Sprout,
+    Truck,
     UsersRound,
     WalletCards,
 } from 'lucide-react';
 
+import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metrics = [
@@ -61,22 +63,43 @@ function AppNavigation() {
                     <Package className="size-4" />
                     Inventory
                 </Link>
-                <button
-                    type="button"
+                <Link
+                    href={route('sales-commodities')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Truck className="size-4" />
+                    Trade hub
+                </Link>
+                <Link
+                    href={route('finance-impact')}
                     className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
                 >
                     <WalletCards className="size-4" />
                     Financials
-                </button>
+                </Link>
+                <Link
+                    href={route('hr-workforce')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <UsersRound className="size-4" />
+                    HR & workforce
+                </Link>
+                <Link
+                    href={route('system-admin')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Settings className="size-4" />
+                    System administration
+                </Link>
             </nav>
             <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                <button
-                    type="button"
+                <Link
+                    href={route('system-settings')}
                     className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
                 >
                     <Settings className="size-4" />
-                    Settings
-                </button>
+                    System settings
+                </Link>
                 <Link
                     href={route('logout')}
                     method="post"
@@ -179,7 +202,7 @@ export default function FarmerRegistry() {
                     </div>
                 </header>
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-                    <AppNavigation />
+                    <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>

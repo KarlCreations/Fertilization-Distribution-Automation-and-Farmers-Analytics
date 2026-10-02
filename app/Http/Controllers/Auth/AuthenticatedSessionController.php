@@ -9,19 +9,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
      * Show the login page.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): SymfonyResponse
     {
-        return Inertia::render('auth/login', [
+        $status = $request->session()->get('status');
+
+        if (Auth::guard('web')->check()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        $response = Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
-            'status' => $request->session()->get('status'),
-        ]);
+            'status' => $status,
+        ])->toResponse($request);
+
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+
+        return $response;
     }
 
     /**
@@ -33,7 +47,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect($this->dashboardRouteFor($request));
+    }
+
+    private function dashboardRouteFor(Request $request): string
+    {
+        return match ($request->user()?->role) {
+            'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => route('farmer-management-dashboard', absolute: false),
+            'inventory', 'inventory_staff' => route('inventory-dashboard', absolute: false),
+            'sales', 'sales_staff' => route('sales-dashboard', absolute: false),
+            'finance', 'finance_staff' => route('finance-dashboard', absolute: false),
+            'hr', 'hr_employee' => route('hr-dashboard', absolute: false),
+            default => route('dashboard', absolute: false),
+        };
     }
 
     /**

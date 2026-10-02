@@ -1,43 +1,42 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
+    BadgeDollarSign,
+    BarChart3,
     Bell,
-    Boxes,
+    BookOpenCheck,
+    BriefcaseBusiness,
     Building2,
+    ChartNoAxesCombined,
     ChevronDown,
     CircleHelp,
-    ClipboardList,
-    Download,
-    FileCheck2,
-    Gauge,
+    FileDown,
+    FileText,
+    Landmark,
     LayoutDashboard,
     Leaf,
     LogOut,
-    MapPin,
     Menu,
-    Package,
+    Play,
     Plus,
-    Radio,
     ReceiptText,
-    RefreshCw,
     Search,
     Settings,
     ShieldCheck,
-    SlidersHorizontal,
+    Sparkles,
     Sprout,
     Truck,
     UsersRound,
     WalletCards,
-    Warehouse,
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metrics = [
-    { label: 'Total inventory valuation', icon: WalletCards, tone: 'bg-[#eff8ff] text-[#175cd3]' },
-    { label: 'Safety margin', icon: ShieldCheck, tone: 'bg-[#fff1f0] text-[#d92d20]' },
-    { label: 'Inbound shipments today', icon: Truck, tone: 'bg-[#eff4ff] text-[#175cd3]' },
-    { label: 'Monthly stock turnover', icon: RefreshCw, tone: 'bg-[#ecfdf3] text-[#067647]' },
+    { label: 'Working capital & treasury', icon: Landmark, tone: 'bg-[#eff8ff] text-[#175cd3]' },
+    { label: 'Disbursement fund', icon: WalletCards, tone: 'bg-[#ecfdf3] text-[#067647]' },
+    { label: 'Trade receivables & aging', icon: ReceiptText, tone: 'bg-[#f4f3ff] text-[#6938ef]' },
+    { label: 'Economic impact outlook', icon: ChartNoAxesCombined, tone: 'bg-[#fffaeb] text-[#b54708]' },
 ];
 
 function Panel({
@@ -47,7 +46,7 @@ function Panel({
     className = '',
 }: {
     title: string;
-    icon: typeof Warehouse;
+    icon: typeof Landmark;
     children: React.ReactNode;
     className?: string;
 }) {
@@ -97,9 +96,9 @@ function Navigation() {
                 </Link>
                 <Link
                     href={route('inventory-warehouses')}
-                    className="flex h-10 items-center gap-3 rounded-md bg-[#eff4ff] px-3 text-sm font-medium text-[#175cd3]"
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
                 >
-                    <Package className="size-4" />
+                    <Building2 className="size-4" />
                     Inventory
                 </Link>
                 <Link
@@ -111,7 +110,7 @@ function Navigation() {
                 </Link>
                 <Link
                     href={route('finance-impact')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                    className="flex h-10 items-center gap-3 rounded-md bg-[#eff4ff] px-3 text-sm font-medium text-[#175cd3]"
                 >
                     <WalletCards className="size-4" />
                     Financials
@@ -153,14 +152,13 @@ function Navigation() {
     );
 }
 
-export default function InventoryWarehouses() {
+export default function FinanceImpact() {
     const { auth } = usePage<SharedData>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
-    const stockColumns = ['SKU & batch trace', 'Depot / physical bay', 'Capacity & reorder line', 'On-hand stock', 'Runway & status'];
 
     return (
         <>
-            <Head title="Inventory & warehouses" />
+            <Head title="Finance & impact" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
                     <button
@@ -177,11 +175,11 @@ export default function InventoryWarehouses() {
                         <span className="font-semibold">{systemName}</span>
                     </div>
                     <label className="relative mx-auto hidden max-w-md flex-1 md:block">
-                        <span className="sr-only">Search inventory</span>
+                        <span className="sr-only">Search finance workspace</span>
                         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
-                            placeholder="Search inventory, depot, or batch"
+                            placeholder="Search ledger, settlement, or counterparty"
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
@@ -211,19 +209,14 @@ export default function InventoryWarehouses() {
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
-                                    <span>Operations</span>
+                                    <span>Enterprise</span>
                                     <span>/</span>
-                                    <span className="text-[#175cd3]">Inventory & warehouses</span>
+                                    <span className="text-[#175cd3]">Finance & impact</span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Inventory & warehouse control</h1>
-                                    <span className="flex items-center gap-1.5 rounded-full bg-[#ecfdf3] px-2.5 py-1 text-xs font-medium text-[#067647]">
-                                        <Radio className="size-3" />
-                                        Live telemetry ready
-                                    </span>
-                                </div>
+                                <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Finance, treasury & economic impact</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-                                    Monitor depot stock, inbound activity, facility capacity, and material movement from connected sources.
+                                    Review treasury, disbursements, financial scenarios, receivables, and compliance from a connected financial
+                                    workspace.
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -231,26 +224,26 @@ export default function InventoryWarehouses() {
                                     type="button"
                                     className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
                                 >
-                                    <Building2 className="size-4" />
-                                    Transfer depots
+                                    <FileDown className="size-4" />
+                                    Export audit trail
                                 </button>
                                 <button
                                     type="button"
                                     className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
                                 >
-                                    <ReceiptText className="size-4" />
-                                    Reconcile
+                                    <FileText className="size-4" />
+                                    Statements
                                 </button>
                                 <button
                                     type="button"
                                     className="flex h-9 items-center gap-2 rounded-md bg-[#175cd3] px-3 text-sm font-semibold text-white hover:bg-[#1849a9]"
                                 >
                                     <Plus className="size-4" />
-                                    Stock receipt
+                                    Disbursement batch
                                 </button>
                             </div>
                         </div>
-                        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Inventory metrics">
+                        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Financial metrics">
                             {metrics.map(({ label, icon: Icon, tone }) => (
                                 <article
                                     key={label}
@@ -266,72 +259,102 @@ export default function InventoryWarehouses() {
                                     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f2f4f7]">
                                         <div className="h-full w-1/4 rounded-full bg-[#d0d5dd]" />
                                     </div>
-                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting database source</p>
+                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting financial data source</p>
                                 </article>
                             ))}
                         </section>
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
                             <div className="space-y-4">
-                                <section className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                                        <div className="flex min-w-0 flex-1 gap-2">
-                                            <button type="button" className="h-9 rounded-md bg-[#101828] px-3 text-xs font-medium text-white">
-                                                All commodities
-                                            </button>
-                                            <label className="relative min-w-0 flex-1">
-                                                <span className="sr-only">Search stock roster</span>
-                                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
-                                                <input
-                                                    className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pr-3 pl-9 text-sm placeholder:text-[#98a2b3]"
-                                                    placeholder="Search stock roster"
-                                                />
-                                            </label>
+                                <Panel title="Liquidity & yield scenario matrix" icon={Sparkles}>
+                                    <div className="flex flex-wrap gap-2 px-5 pb-4">
+                                        <button type="button" className="h-8 rounded-md bg-[#101828] px-3 text-xs font-medium text-white">
+                                            Baseline scenario
+                                        </button>
+                                        <button type="button" className="h-8 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]">
+                                            Commodity shock
+                                        </button>
+                                        <button type="button" className="h-8 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]">
+                                            Climate scenario
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="ml-auto flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-medium text-[#475467]"
+                                        >
+                                            <Play className="size-3.5" />
+                                            Run simulation
+                                        </button>
+                                    </div>
+                                    <div className="grid gap-3 px-5 sm:grid-cols-3">
+                                        <div className="rounded-md bg-[#f5f8ff] p-4">
+                                            <p className="text-xs text-[#667085]">Projected net revenue</p>
+                                            <div className="mt-3 h-6 w-20 animate-pulse rounded bg-[#dbeafe]" />
                                         </div>
+                                        <div className="rounded-md bg-[#f5f8ff] p-4">
+                                            <p className="text-xs text-[#667085]">Subsidy support burden</p>
+                                            <div className="mt-3 h-6 w-20 animate-pulse rounded bg-[#dbeafe]" />
+                                        </div>
+                                        <div className="rounded-md bg-[#f5f8ff] p-4">
+                                            <p className="text-xs text-[#667085]">Working capital buffer</p>
+                                            <div className="mt-3 h-6 w-20 animate-pulse rounded bg-[#dbeafe]" />
+                                        </div>
+                                    </div>
+                                    <div className="px-5 pt-5 pb-5">
+                                        <div className="relative h-48 overflow-hidden rounded-md border border-dashed border-[#d0d5dd] bg-[#fbfcfe]">
+                                            <div className="absolute inset-x-5 top-1/4 border-t border-[#dbeafe]" />
+                                            <div className="absolute inset-x-5 top-1/2 border-t border-[#dbeafe]" />
+                                            <div className="absolute inset-x-5 top-3/4 border-t border-[#dbeafe]" />
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="rounded-md bg-white px-3 py-2 text-xs font-medium text-[#667085] shadow-sm">
+                                                    Scenario curve will populate from analytics API
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mx-5 mb-5 flex gap-3 rounded-md bg-[#f5f8ff] p-4">
+                                        <ShieldCheck className="size-4 shrink-0 text-[#175cd3]" />
+                                        <div>
+                                            <p className="text-sm font-medium text-[#344054]">Finance advisory</p>
+                                            <p className="mt-1 text-xs leading-5 text-[#667085]">
+                                                Scenario guidance and risk signals will appear after financial models are configured.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Panel>
+                                <Panel title="Disbursement & subsidy reconciliation ledger" icon={BookOpenCheck} className="overflow-hidden">
+                                    <div className="flex flex-col gap-3 border-t border-[#eaecf0] p-5 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-xs text-[#667085]">Settlement records will be synchronized from your finance database.</p>
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
-                                                className="flex h-9 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
+                                                className="flex h-8 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
                                             >
-                                                All facilities <ChevronDown className="size-3.5" />
+                                                All zones <ChevronDown className="size-3.5" />
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-label="Inventory filters"
-                                                className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467]"
+                                                className="flex h-8 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
                                             >
-                                                <SlidersHorizontal className="size-4" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-medium text-[#475467]"
-                                            >
-                                                <Download className="size-3.5" />
-                                                Export
+                                                All channels <ChevronDown className="size-3.5" />
                                             </button>
                                         </div>
                                     </div>
-                                </section>
-                                <Panel title="Depot stock roster & capacity utilization" icon={Boxes} className="overflow-hidden">
-                                    <div className="border-t border-[#eaecf0] px-5 py-3 text-xs text-[#667085]">
-                                        Live stock, capacity, reorder, and runway records will populate from inventory services.
-                                    </div>
                                     <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[760px] text-left">
+                                        <table className="w-full min-w-[720px] text-left">
                                             <thead className="bg-[#f9fafb] text-[10px] font-semibold tracking-[0.08em] text-[#667085] uppercase">
                                                 <tr>
-                                                    {stockColumns.map((column) => (
-                                                        <th key={column} className="px-5 py-3">
-                                                            {column}
-                                                        </th>
-                                                    ))}
+                                                    <th className="px-5 py-3">Batch identifier</th>
+                                                    <th className="px-5 py-3">Beneficiary / channel</th>
+                                                    <th className="px-5 py-3">Vouchers</th>
+                                                    <th className="px-5 py-3">Settled amount</th>
+                                                    <th className="px-5 py-3">Audit status</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr>
                                                     <td colSpan={5} className="px-5 py-16">
                                                         <EmptyState
-                                                            title="No stock records available"
-                                                            description="Connect inventory and warehouse data to populate the active roster."
+                                                            title="No disbursement records available"
+                                                            description="Approved batches will appear here after the finance source is connected."
                                                             className="h-36"
                                                         />
                                                     </td>
@@ -339,79 +362,46 @@ export default function InventoryWarehouses() {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="flex items-center justify-between border-t border-[#eaecf0] px-5 py-4 text-xs text-[#98a2b3]">
-                                        <span>Stock records will appear here when synchronized.</span>
-                                        <div className="flex gap-1">
-                                            <span className="flex size-7 items-center justify-center rounded bg-[#f2f4f7]">1</span>
-                                            <span className="flex size-7 items-center justify-center rounded bg-[#f9fafb]">2</span>
-                                        </div>
-                                    </div>
-                                </Panel>
-                                <Panel title="Physical bay allocation & transit staging" icon={MapPin}>
-                                    <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
-                                        <EmptyState
-                                            title="Depot capacity view"
-                                            description="Facility and bay availability will appear here."
-                                            className="h-36"
-                                        />
-                                        <EmptyState
-                                            title="Transit staging view"
-                                            description="Inbound and outbound movement will appear here."
-                                            className="h-36"
-                                        />
-                                    </div>
                                 </Panel>
                             </div>
                             <aside className="grid content-start gap-4">
-                                <Panel title="Auto-procurement" icon={ClipboardList}>
+                                <Panel title="Budget vs. actual variance" icon={BarChart3}>
                                     <div className="px-5 pb-5">
                                         <EmptyState
-                                            title="No procurement triggers"
-                                            description="Reorder rules will create review items when stock thresholds are connected."
+                                            title="No budget data available"
+                                            description="Budget pacing and variance will appear after allocation data is connected."
+                                            className="h-56"
+                                        />
+                                    </div>
+                                </Panel>
+                                <Panel title="Letters of credit & receivables" icon={BriefcaseBusiness}>
+                                    <div className="px-5 pb-5">
+                                        <EmptyState
+                                            title="No receivables available"
+                                            description="Counterparty and settlement instruments will appear here."
                                             className="h-44"
                                         />
                                     </div>
                                 </Panel>
-                                <Panel title="Silo & sensor telemetry" icon={Gauge}>
-                                    <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No sensor streams connected"
-                                            description="Silo temperature, moisture, and air exchange readings will render here."
-                                            className="h-44"
-                                        />
+                                <section className="rounded-lg bg-[#101828] p-5 text-white shadow-[0_1px_2px_rgba(16,24,40,0.2)]">
+                                    <div className="flex items-center gap-2 text-sm font-semibold">
+                                        <BadgeDollarSign className="size-4 text-[#84adff]" />
+                                        Regulatory compliance
                                     </div>
-                                </Panel>
-                                <Panel title="Weighbridge & slip stream" icon={FileCheck2}>
-                                    <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No weighbridge slips"
-                                            description="Inbound and outbound scale events will appear here."
-                                            className="h-44"
-                                        />
-                                    </div>
-                                </Panel>
+                                    <p className="mt-4 text-sm font-medium">Compliance records are ready for connection</p>
+                                    <p className="mt-2 text-xs leading-5 text-[#cbd5e1]">
+                                        Audit seals, ledger anchoring, and review milestones will populate here from your registry.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="mt-5 flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#175cd3] px-3 text-xs font-semibold text-white"
+                                    >
+                                        <FileDown className="size-3.5" />
+                                        Download audit package
+                                    </button>
+                                </section>
                             </aside>
                         </div>
-                        <section className="mt-4 grid gap-4 lg:grid-cols-3">
-                            <Panel title="Network capacity" icon={Warehouse}>
-                                <div className="px-5 pb-5">
-                                    <div className="h-7 w-24 animate-pulse rounded bg-[#eef2f6]" />
-                                    <p className="mt-3 text-xs text-[#98a2b3]">Awaiting facility capacity feed</p>
-                                </div>
-                            </Panel>
-                            <Panel title="Gate-to-gate movement" icon={Truck}>
-                                <div className="px-5 pb-5">
-                                    <div className="h-7 w-24 animate-pulse rounded bg-[#eef2f6]" />
-                                    <p className="mt-3 text-xs text-[#98a2b3]">Awaiting transit event feed</p>
-                                </div>
-                            </Panel>
-                            <Panel title="Reconciliation status" icon={ShieldCheck}>
-                                <div className="px-5 pb-5">
-                                    <div className="h-7 w-24 animate-pulse rounded bg-[#eef2f6]" />
-                                    <p className="mt-3 text-xs text-[#98a2b3]">Awaiting ledger reconciliation</p>
-                                </div>
-                            </Panel>
-                        </section>
                     </main>
                 </div>
             </div>
