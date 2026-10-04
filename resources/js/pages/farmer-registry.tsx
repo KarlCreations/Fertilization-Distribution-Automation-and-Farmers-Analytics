@@ -28,11 +28,35 @@ import {
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
-const metrics = [
-    { label: 'Registered farmers', icon: UsersRound, tone: 'bg-[#eff8ff] text-[#175cd3]' },
-    { label: 'Fertilizer quota disbursed', icon: Package, tone: 'bg-[#ecfdf3] text-[#067647]' },
-    { label: 'Digital vouchers issued', icon: ClipboardList, tone: 'bg-[#f4f3ff] text-[#6938ef]' },
-    { label: 'Subsidy budget clearing', icon: WalletCards, tone: 'bg-[#fffaeb] text-[#b54708]' },
+const metricDefinitions = [
+    {
+        key: 'registeredFarmers',
+        label: 'Registered farmers',
+        icon: UsersRound,
+        tone: 'bg-[#eff8ff] text-[#175cd3]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'quotaDisbursed',
+        label: 'Fertilizer quota disbursed',
+        icon: Package,
+        tone: 'bg-[#ecfdf3] text-[#067647]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
+    {
+        key: 'activeQuotaRecords',
+        label: 'Active quota records',
+        icon: ClipboardList,
+        tone: 'bg-[#f4f3ff] text-[#6938ef]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'quotaAllocated',
+        label: 'Allocated fertilizer quota',
+        icon: WalletCards,
+        tone: 'bg-[#fffaeb] text-[#b54708]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
 ];
 
 const filters = ['All farmers', 'Pending verification', 'Quota status', 'Service zone'];
@@ -150,7 +174,17 @@ function EmptyState({ label, className = '' }: { label: string; className?: stri
     );
 }
 
-export default function FarmerRegistry() {
+type QuotaLedgerEntry = {
+    id: number;
+    farmer_name: string;
+    national_id: string;
+    commodity_name: string;
+    cycle_name: string;
+    allocated_qty: number;
+    disbursed_qty: number;
+};
+
+export default function FarmerRegistry({ registryMetrics, quotaLedger }: { registryMetrics: Record<string, number>; quotaLedger: QuotaLedgerEntry[] }) {
     const { auth } = usePage<SharedData>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
 
@@ -242,7 +276,7 @@ export default function FarmerRegistry() {
                             </div>
                         </div>
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Registry metrics">
-                            {metrics.map(({ label, icon: Icon, tone }) => (
+                            {metricDefinitions.map(({ key, label, icon: Icon, tone, format }) => (
                                 <article
                                     key={label}
                                     className="rounded-lg border border-[#eaecf0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -253,11 +287,11 @@ export default function FarmerRegistry() {
                                             <Icon className="size-4" />
                                         </span>
                                     </div>
-                                    <div className="mt-5 h-7 w-28 animate-pulse rounded bg-[#eef2f6]" />
+                                    <p className="mt-5 text-2xl font-semibold tracking-tight text-[#101828]">{format(registryMetrics[key] ?? 0)}</p>
                                     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f2f4f7]">
                                         <div className="h-full w-1/4 rounded-full bg-[#d0d5dd]" />
                                     </div>
-                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting database source</p>
+                                    <p className="mt-2 text-xs text-[#98a2b3]">Live from ERP database</p>
                                 </article>
                             ))}
                         </section>
@@ -300,29 +334,55 @@ export default function FarmerRegistry() {
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
                             <Panel title="Farmer quota and voucher ledger" icon={ClipboardList} className="overflow-hidden">
                                 <div className="border-t border-[#eaecf0] px-5 py-3 text-xs text-[#667085]">
-                                    Live registry records will be listed here after database connection.
+                                    Live quota and voucher records from the ERP database.
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[720px] text-left">
                                         <thead className="bg-[#f9fafb] text-[10px] font-semibold tracking-[0.08em] text-[#667085] uppercase">
                                             <tr>
                                                 <th className="px-5 py-3">Farmer & registry ID</th>
-                                                <th className="px-5 py-3">Cadastral parcel</th>
-                                                <th className="px-5 py-3">Primary crop</th>
-                                                <th className="px-5 py-3">Quota allocation</th>
+                                                <th className="px-5 py-3">Commodity / cycle</th>
+                                                <th className="px-5 py-3">Allocated</th>
+                                                <th className="px-5 py-3">Disbursed / balance</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td colSpan={4} className="px-5 py-16">
-                                                    <EmptyState label="No farmer records available" className="h-36" />
-                                                </td>
-                                            </tr>
+                                        <tbody className="divide-y divide-[#eaecf0]">
+                                            {quotaLedger.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="px-5 py-16">
+                                                        <EmptyState label="No farmer records available" className="h-36" />
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                quotaLedger.map((entry) => {
+                                                    const allocated = Number(entry.allocated_qty);
+                                                    const disbursed = Number(entry.disbursed_qty);
+                                                    const balance = Math.max(allocated - disbursed, 0);
+
+                                                    return (
+                                                        <tr key={entry.id} className="text-xs text-[#475467]">
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#101828]">{entry.farmer_name}</p>
+                                                                <p className="mt-1 text-[#98a2b3]">{entry.national_id}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#344054]">{entry.commodity_name}</p>
+                                                                <p className="mt-1 text-[#98a2b3]">{entry.cycle_name}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">{allocated.toLocaleString()} MT</td>
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#175cd3]">{disbursed.toLocaleString()} MT disbursed</p>
+                                                                <p className="mt-1 text-[#667085]">{balance.toLocaleString()} MT remaining</p>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
                                 <div className="flex items-center justify-between border-t border-[#eaecf0] px-5 py-4 text-xs text-[#98a2b3]">
-                                    <span>Records will appear as they are registered.</span>
+                                    <span>{quotaLedger.length} live quota records shown.</span>
                                     <div className="flex gap-1">
                                         <span className="flex size-7 items-center justify-center rounded bg-[#f2f4f7]">1</span>
                                         <span className="flex size-7 items-center justify-center rounded bg-[#f9fafb]">2</span>

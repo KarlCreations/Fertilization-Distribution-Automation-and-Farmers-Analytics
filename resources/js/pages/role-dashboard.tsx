@@ -34,9 +34,9 @@ const dashboardContent: Record<Role, { title: string; description: string; metri
     },
     hr: {
         title: 'HR operations dashboard',
-        description: 'Coordinate workforce records, attendance, payroll preparation, and field staffing from one workspace.',
-        metrics: ['Workforce roster', 'Payroll readiness', 'Attendance activity', 'Open staffing actions'],
-        panels: ['Workforce activity', 'Payroll preparation', 'Staffing and compliance'],
+        description: 'Coordinate workforce records, attendance, field staffing, and compliance from one workspace.',
+        metrics: ['Workforce roster', 'Field readiness', 'Attendance activity', 'Open staffing actions'],
+        panels: ['Workforce activity', 'Field operations', 'Staffing and compliance'],
     },
 };
 
