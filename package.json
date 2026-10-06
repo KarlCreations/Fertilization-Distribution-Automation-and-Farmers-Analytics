@@ -46,6 +46,8 @@
         "globals": "^15.14.0",
         "laravel-vite-plugin": "^1.0",
         "lucide-react": "^0.475.0",
+        "powerbi-client": "^2.25.0",
+        "powerbi-client-react": "^2.0.2",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "tailwind-merge": "^3.0.1",

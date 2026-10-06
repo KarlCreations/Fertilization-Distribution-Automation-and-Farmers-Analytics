@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { Bell, CircleHelp, Database, Leaf, Menu, Search, ShieldCheck, UsersRound, WalletCards, Warehouse } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
 type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy';
@@ -145,6 +146,9 @@ export default function RoleDashboard({ role }: { role: Role }) {
                                 );
                             })}
                         </section>
+                        <div className="mt-6">
+                            <PowerBiReport title={`${content.title} analytics`} />
+                        </div>
                         <div className="mt-6 grid gap-6 xl:grid-cols-2">
                             {content.panels.map((title, index) => (
                                 <EmptyPanel key={title} title={title} icon={[Warehouse, Database, ShieldCheck][index]} />
