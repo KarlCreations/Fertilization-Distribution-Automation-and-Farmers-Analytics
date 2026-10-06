@@ -1,12 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    BadgeDollarSign,
     Bell,
     CalendarClock,
     ChevronDown,
     CircleHelp,
     ClipboardList,
-    FileCheck2,
     LayoutDashboard,
     Leaf,
     LogOut,
@@ -25,11 +23,35 @@ import {
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
-const metrics = [
-    { label: 'Active workforce', icon: UsersRound, tone: 'bg-[#eff8ff] text-[#175cd3]' },
-    { label: 'Monthly payroll incurred', icon: WalletCards, tone: 'bg-[#f4f3ff] text-[#6938ef]' },
-    { label: 'Field dispatch & verification', icon: MapPinned, tone: 'bg-[#ecfdf3] text-[#067647]' },
-    { label: 'Safety & compliance rate', icon: ShieldCheck, tone: 'bg-[#eff4ff] text-[#175cd3]' },
+const metricDefinitions = [
+    {
+        key: 'activeWorkforce',
+        label: 'Active workforce',
+        icon: UsersRound,
+        tone: 'bg-[#eff8ff] text-[#175cd3]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'workforceReadiness',
+        label: 'Workforce readiness',
+        icon: UsersRound,
+        tone: 'bg-[#f4f3ff] text-[#6938ef]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'fieldDispatch',
+        label: 'Field dispatch & verification',
+        icon: MapPinned,
+        tone: 'bg-[#ecfdf3] text-[#067647]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'complianceRecords',
+        label: 'Safety & compliance records',
+        icon: ShieldCheck,
+        tone: 'bg-[#eff4ff] text-[#175cd3]',
+        format: (value: number) => value.toLocaleString(),
+    },
 ];
 
 function Panel({
@@ -145,10 +167,21 @@ function Navigation() {
     );
 }
 
-export default function HrWorkforce() {
+type Employee = {
+    employee_code: string;
+    department: string | null;
+    position: string | null;
+    is_active: boolean;
+    name: string;
+    email: string;
+    zone_name: string | null;
+    depot_name: string | null;
+};
+
+export default function HrWorkforce({ workforceMetrics, employees }: { workforceMetrics: Record<string, number>; employees: Employee[] }) {
     const { auth } = usePage<SharedData>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
-    const columns = ['Employee / ID', 'Role & operational depot', 'Tier', 'Base + per-diem', 'Timesheet / shift'];
+    const columns = ['Employee / ID', 'Role & operational depot', 'Department', 'Zone', 'Status'];
 
     return (
         <>
@@ -173,7 +206,7 @@ export default function HrWorkforce() {
                         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
-                            placeholder="Search employees, shifts, or payroll"
+                            placeholder="Search employees, shifts, or field teams"
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
@@ -207,10 +240,9 @@ export default function HrWorkforce() {
                                     <span>/</span>
                                     <span className="text-[#175cd3]">HR & workforce management</span>
                                 </div>
-                                <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">HR, field operations & payroll management</h1>
+                                <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">HR & field operations management</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-                                    Coordinate workforce rosters, field dispatch, shift logistics, payroll runs, and compliance from connected
-                                    sources.
+                                    Coordinate workforce rosters, field dispatch, shift logistics, and compliance from connected sources.
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -223,13 +255,6 @@ export default function HrWorkforce() {
                                 </button>
                                 <button
                                     type="button"
-                                    className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
-                                >
-                                    <FileCheck2 className="size-4" />
-                                    Generate payslips
-                                </button>
-                                <button
-                                    type="button"
                                     className="flex h-9 items-center gap-2 rounded-md bg-[#175cd3] px-3 text-sm font-semibold text-white hover:bg-[#1849a9]"
                                 >
                                     <Plus className="size-4" />
@@ -238,7 +263,7 @@ export default function HrWorkforce() {
                             </div>
                         </div>
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workforce metrics">
-                            {metrics.map(({ label, icon: Icon, tone }) => (
+                            {metricDefinitions.map(({ key, label, icon: Icon, tone, format }) => (
                                 <article
                                     key={label}
                                     className="rounded-lg border border-[#eaecf0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -249,17 +274,17 @@ export default function HrWorkforce() {
                                             <Icon className="size-4" />
                                         </span>
                                     </div>
-                                    <div className="mt-5 h-7 w-28 animate-pulse rounded bg-[#eef2f6]" />
+                                    <p className="mt-5 text-2xl font-semibold tracking-tight text-[#101828]">{format(workforceMetrics[key] ?? 0)}</p>
                                     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f2f4f7]">
                                         <div className="h-full w-1/4 rounded-full bg-[#d0d5dd]" />
                                     </div>
-                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting workforce data source</p>
+                                    <p className="mt-2 text-xs text-[#98a2b3]">Live from ERP database</p>
                                 </article>
                             ))}
                         </section>
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
                             <div className="space-y-4">
-                                <Panel title="Employee roster & payroll ledger" icon={UsersRound} className="overflow-hidden">
+                                <Panel title="Employee roster & field operations" icon={UsersRound} className="overflow-hidden">
                                     <div className="flex flex-col gap-3 border-t border-[#eaecf0] p-5 sm:flex-row sm:items-center">
                                         <label className="relative min-w-0 flex-1">
                                             <span className="sr-only">Search employees</span>
@@ -287,31 +312,41 @@ export default function HrWorkforce() {
                                                     ))}
                                                 </tr>
                                             </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td colSpan={5} className="px-5 py-16">
-                                                        <EmptyState
-                                                            title="No employee records available"
-                                                            description="Employee roles, shifts, and payroll information will appear after HR data is connected."
-                                                            className="h-36"
-                                                        />
-                                                    </td>
-                                                </tr>
+                                            <tbody className="divide-y divide-[#eaecf0]">
+                                                {employees.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-5 py-16">
+                                                            <EmptyState
+                                                                title="No employee records available"
+                                                                description="Employee roles, shifts, and field assignments will appear after HR data is connected."
+                                                                className="h-36"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    employees.map((employee) => (
+                                                        <tr key={employee.employee_code} className="text-xs text-[#475467]">
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-semibold text-[#101828]">{employee.name}</p>
+                                                                <p className="mt-1 text-[#98a2b3]">{employee.employee_code}</p>
+                                                                <p className="mt-1 text-[11px] text-[#667085]">{employee.email}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#344054]">{employee.position || 'Unassigned position'}</p>
+                                                                <p className="mt-1">{employee.depot_name || 'No depot assigned'}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">{employee.department || 'Unassigned department'}</td>
+                                                            <td className="px-5 py-4">{employee.zone_name || 'No zone assigned'}</td>
+                                                            <td className="px-5 py-4">
+                                                                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${employee.is_active ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#f2f4f7] text-[#667085]'}`}>
+                                                                    {employee.is_active ? 'Active' : 'Inactive'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
-                                    </div>
-                                </Panel>
-                                <Panel title="Automated payroll calculation queue & deductions" icon={BadgeDollarSign}>
-                                    <div className="grid gap-3 px-5 pb-5 md:grid-cols-4">
-                                        {['Gross wage pool', 'Withholding tax', 'Social security', 'Field per-diem'].map((label) => (
-                                            <div key={label} className="rounded-md bg-[#f5f8ff] p-4">
-                                                <p className="text-xs text-[#667085]">{label}</p>
-                                                <div className="mt-3 h-6 w-20 animate-pulse rounded bg-[#dbeafe]" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mx-5 mb-5 rounded-md bg-[#f5f8ff] p-4 text-xs text-[#667085]">
-                                        Payroll calculation progress will populate from the payroll engine.
                                     </div>
                                 </Panel>
                             </div>
@@ -333,21 +368,12 @@ export default function HrWorkforce() {
                                         </div>
                                     </div>
                                 </Panel>
-                                <Panel title="Payroll cutoff timeline" icon={CalendarClock}>
+                                <Panel title="Field operations timeline" icon={CalendarClock}>
                                     <div className="px-5 pb-5">
                                         <EmptyState
-                                            title="No payroll timeline available"
-                                            description="Timesheet audits, reviews, and payroll approval stages will appear here."
+                                            title="No field operations timeline available"
+                                            description="Shift schedules, field reviews, and operational milestones will appear here."
                                             className="h-44"
-                                        />
-                                    </div>
-                                </Panel>
-                                <Panel title="Payslip portal & dispatch" icon={FileCheck2}>
-                                    <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No payslip dispatch records"
-                                            description="Digital payslip delivery and verification status will render here."
-                                            className="h-40"
                                         />
                                     </div>
                                 </Panel>

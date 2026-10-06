@@ -19,16 +19,36 @@ import {
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
-const metrics = [
-    { label: 'Registered farmers', icon: UsersRound, accent: 'text-[#175cd3] bg-[#eff8ff]' },
-    { label: 'Inventory on hand', icon: Boxes, accent: 'text-[#0b6b4f] bg-[#ecfdf3]' },
-    { label: 'Distribution activity', icon: Truck, accent: 'text-[#7f56d9] bg-[#f4f3ff]' },
-    { label: 'Working capital', icon: WalletCards, accent: 'text-[#b54708] bg-[#fffaeb]' },
+const metricDefinitions = [
+    {
+        key: 'registeredFarmers',
+        label: 'Registered farmers',
+        icon: UsersRound,
+        accent: 'text-[#175cd3] bg-[#eff8ff]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'inventoryOnHand',
+        label: 'Inventory on hand',
+        icon: Boxes,
+        accent: 'text-[#0b6b4f] bg-[#ecfdf3]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
+    {
+        key: 'distributionActivity',
+        label: 'Distribution activity',
+        icon: Truck,
+        accent: 'text-[#7f56d9] bg-[#f4f3ff]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
+    {
+        key: 'tradeValue',
+        label: 'Committed trade value',
+        icon: WalletCards,
+        accent: 'text-[#b54708] bg-[#fffaeb]',
+        format: (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+    },
 ];
-
-function EmptyValue() {
-    return <div className="mt-5 h-7 w-28 animate-pulse rounded bg-[#eef2f6]" />;
-}
 
 function Panel({
     title,
@@ -52,7 +72,16 @@ function Panel({
     );
 }
 
-export default function Dashboard() {
+type QuotaLedgerEntry = {
+    id: number;
+    farmer_name: string;
+    commodity_name: string;
+    cycle_name: string;
+    allocated_qty: number;
+    disbursed_qty: number;
+};
+
+export default function Dashboard({ overviewMetrics, quotaLedger }: { overviewMetrics: Record<string, number>; quotaLedger: QuotaLedgerEntry[] }) {
     const { auth } = usePage<SharedData>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
 
@@ -141,7 +170,7 @@ export default function Dashboard() {
                         </div>
 
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key metrics">
-                            {metrics.map(({ label, icon: Icon, accent }) => (
+                            {metricDefinitions.map(({ key, label, icon: Icon, accent, format }) => (
                                 <article
                                     key={label}
                                     className="rounded-lg border border-[#eaecf0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -152,11 +181,11 @@ export default function Dashboard() {
                                             <Icon className="size-4" />
                                         </div>
                                     </div>
-                                    <EmptyValue />
+                                    <p className="mt-5 text-2xl font-semibold tracking-tight text-[#101828]">{format(overviewMetrics[key] ?? 0)}</p>
                                     <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#f2f4f7]">
                                         <div className="h-full w-1/4 rounded-full bg-[#d0d5dd]" />
                                     </div>
-                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting connected source</p>
+                                    <p className="mt-2 text-xs text-[#98a2b3]">Live from ERP database</p>
                                 </article>
                             ))}
                         </section>
@@ -225,9 +254,9 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        <Panel title="Operational ledger" icon={ClipboardList} className="mt-4 overflow-hidden p-0">
+                        <Panel title="Farmer quota & voucher ledger" icon={ClipboardList} className="mt-4 overflow-hidden p-0">
                             <div className="flex flex-col gap-3 border-b border-[#eaecf0] p-5 sm:flex-row sm:items-center sm:justify-between">
-                                <p className="text-xs text-[#667085]">Recent activity will be synchronized from your database.</p>
+                                <p className="text-xs text-[#667085]">Allocation and voucher disbursement activity from the ERP database.</p>
                                 <button
                                     type="button"
                                     className="flex h-8 items-center gap-2 self-start rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467] sm:self-auto"
@@ -239,27 +268,52 @@ export default function Dashboard() {
                                 <table className="w-full min-w-[680px] text-left">
                                     <thead className="bg-[#f9fafb] text-[10px] font-semibold tracking-[0.08em] text-[#667085] uppercase">
                                         <tr>
-                                            <th className="px-5 py-3">Timestamp</th>
-                                            <th className="px-5 py-3">Module</th>
-                                            <th className="px-5 py-3">Event</th>
-                                            <th className="px-5 py-3">Reference</th>
-                                            <th className="px-5 py-3">Status</th>
+                                            <th className="px-5 py-3">Farmer</th>
+                                            <th className="px-5 py-3">Commodity / cycle</th>
+                                            <th className="px-5 py-3">Allocated</th>
+                                            <th className="px-5 py-3">Disbursed</th>
+                                            <th className="px-5 py-3">Balance / status</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td colSpan={5} className="px-5 py-12 text-center">
+                                    <tbody className="divide-y divide-[#eaecf0]">
+                                        {quotaLedger.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-5 py-12 text-center">
                                                 <div className="mx-auto flex max-w-sm flex-col items-center">
                                                     <div className="flex size-10 items-center justify-center rounded-full bg-[#eff4ff] text-[#175cd3]">
                                                         <ClipboardList className="size-5" />
                                                     </div>
-                                                    <p className="mt-3 text-sm font-medium text-[#344054]">No activity to display</p>
+                                                    <p className="mt-3 text-sm font-medium text-[#344054]">No quota records to display</p>
                                                     <p className="mt-1 text-xs leading-5 text-[#98a2b3]">
-                                                        New transactions will appear once live sources are connected.
+                                                        Quota allocations and voucher activity will appear when records are available.
                                                     </p>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            quotaLedger.map((entry) => {
+                                                const balance = Number(entry.allocated_qty) - Number(entry.disbursed_qty);
+                                                const isComplete = balance <= 0;
+
+                                                return (
+                                                    <tr key={entry.id} className="text-xs text-[#475467]">
+                                                        <td className="px-5 py-4 font-medium text-[#101828]">{entry.farmer_name}</td>
+                                                        <td className="px-5 py-4">
+                                                            <p className="font-medium text-[#344054]">{entry.commodity_name}</p>
+                                                            <p className="mt-1 text-[#98a2b3]">{entry.cycle_name}</p>
+                                                        </td>
+                                                        <td className="px-5 py-4">{Number(entry.allocated_qty).toLocaleString()} MT</td>
+                                                        <td className="px-5 py-4 text-[#175cd3]">{Number(entry.disbursed_qty).toLocaleString()} MT</td>
+                                                        <td className="px-5 py-4">
+                                                            <p className="font-medium text-[#344054]">{Math.max(balance, 0).toLocaleString()} MT remaining</p>
+                                                            <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-medium ${isComplete ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#eff4ff] text-[#175cd3]'}`}>
+                                                                {isComplete ? 'Complete' : 'Pending disbursement'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
