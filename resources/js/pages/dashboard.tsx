@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
 const metricDefinitions = [
@@ -189,6 +190,9 @@ export default function Dashboard({ overviewMetrics, quotaLedger }: { overviewMe
                                 </article>
                             ))}
                         </section>
+                        <div className="mt-4">
+                            <PowerBiReport title="Executive analytics" />
+                        </div>
 
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                             <Panel title="Demand and seasonal outlook" icon={ChartNoAxesCombined} className="min-h-[380px]">

@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\PowerBiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -7,6 +9,14 @@ use Inertia\Inertia;
 Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('power-bi/embed-config', function (PowerBiService $powerBi): JsonResponse {
+        try {
+            return response()->json($powerBi->embedConfiguration());
+        } catch (RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 503);
+        }
+    })->middleware('role:executive,admin,operations_director,inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')->name('power-bi.embed-config');
+
     Route::get('dashboard', function () {
         return Inertia::render('dashboard', [
             'overviewMetrics' => [

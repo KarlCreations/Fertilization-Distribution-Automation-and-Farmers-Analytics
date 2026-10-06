@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'power_bi' => [
+        'enabled' => (bool) env('POWER_BI_ENABLED', false),
+        'tenant_id' => env('POWER_BI_TENANT_ID'),
+        'client_id' => env('POWER_BI_CLIENT_ID'),
+        'client_secret' => env('POWER_BI_CLIENT_SECRET'),
+        'workspace_id' => env('POWER_BI_WORKSPACE_ID'),
+        'report_id' => env('POWER_BI_REPORT_ID'),
+        'dataset_id' => env('POWER_BI_DATASET_ID'),
+    ],
+
 ];

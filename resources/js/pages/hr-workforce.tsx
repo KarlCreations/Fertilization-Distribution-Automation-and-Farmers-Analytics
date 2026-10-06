@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
 const metricDefinitions = [
@@ -233,6 +234,7 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
+                        <div className="mb-4"><PowerBiReport title="HR workforce analytics" /></div>
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
