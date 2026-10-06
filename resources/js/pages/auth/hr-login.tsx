@@ -1,5 +1,5 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { ArrowRight, Eye, Leaf, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
+import { Head, useForm } from '@inertiajs/react';
+import { ArrowLeft, ArrowRight, Eye, LoaderCircle, LockKeyhole, Mail, UsersRound } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 import InputError from '@/components/input-error';
@@ -10,27 +10,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
-interface LoginForm {
+interface HrLoginForm {
     email: string;
     password: string;
     remember: boolean;
     [key: string]: string | boolean;
 }
 
-interface DemoAccount {
-    label: string;
-    email: string;
-    password: string;
-}
-
-interface LoginProps {
+interface HrLoginProps {
     status?: string;
     canResetPassword: boolean;
-    demoAccounts?: DemoAccount[];
 }
 
-export default function Login({ status, canResetPassword, demoAccounts = [] }: LoginProps) {
-    const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
+export default function HrLogin({ status, canResetPassword }: HrLoginProps) {
+    const { data, setData, post, processing, errors, reset } = useForm<HrLoginForm>({
         email: '',
         password: '',
         remember: false,
@@ -43,27 +36,17 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
         });
     };
 
-    const signInAs = (email: string, password: string) => {
-        router.post(
-            route('login'),
-            { email, password, remember: false },
-            {
-                onStart: () => setData({ email, password, remember: false }),
-            },
-        );
-    };
-
     return (
         <AuthLayout>
-            <Head title="Sign in" />
+            <Head title="HR Sign in" />
 
             <div className="mb-8">
-                <div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-[#0b6b4f] text-white shadow-sm">
-                    <Leaf className="size-5" aria-hidden="true" />
+                <div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-[#175cd3] text-white shadow-sm">
+                    <UsersRound className="size-5" aria-hidden="true" />
                 </div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#0b6b4f] uppercase">Operations portal</p>
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#175cd3] uppercase">HR employee portal</p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-normal text-[#101828]">Welcome back</h1>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">Sign in to access your operations workspace.</p>
+                <p className="mt-2 text-sm leading-6 text-[#667085]">Sign in to manage workforce records, attendance, and compliance.</p>
             </div>
 
             <form className="flex flex-col gap-5" onSubmit={submit}>
@@ -129,7 +112,7 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                             tabIndex={3}
                             checked={data.remember}
                             onCheckedChange={(checked) => setData('remember', checked === true)}
-                            className="border-[#98a2b3] data-[state=checked]:border-[#0b6b4f] data-[state=checked]:bg-[#0b6b4f]"
+                            className="border-[#98a2b3] data-[state=checked]:border-[#175cd3] data-[state=checked]:bg-[#175cd3]"
                         />
                         <Label htmlFor="remember" className="text-sm text-[#475467]">
                             Keep me signed in
@@ -143,31 +126,18 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                         disabled={processing}
                     >
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Sign in
+                        Sign in to HR workspace
                         {!processing && <ArrowRight className="size-4" aria-hidden="true" />}
                     </Button>
                 </div>
             </form>
 
-            {demoAccounts.length > 0 && (
-                <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                    <p className="text-xs font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Development quick access</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        {demoAccounts.map((account) => (
-                            <button
-                                key={account.email}
-                                type="button"
-                                disabled={processing}
-                                onClick={() => signInAs(account.email, account.password)}
-                                className="flex h-9 items-center justify-between rounded-md border border-[#d0d5dd] bg-white px-3 text-left text-xs font-medium text-[#475467] hover:border-[#175cd3] hover:text-[#175cd3] disabled:opacity-50"
-                            >
-                                {account.label}
-                                <ArrowRight className="size-3.5" />
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <div className="mt-3 text-center text-sm">
+                <TextLink href={route('login')} className="inline-flex items-center gap-1.5 text-[#667085]" tabIndex={7}>
+                    <ArrowLeft className="size-3.5" aria-hidden="true" />
+                    Back to all roles
+                </TextLink>
+            </div>
 
             {status && <div className="mt-5 text-center text-sm font-medium text-[#0b6b4f]">{status}</div>}
         </AuthLayout>
