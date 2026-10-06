@@ -47,4 +47,14 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function canAccessSales(): bool
+    {
+        return $this->hasSalesAdministrationAccess() || in_array($this->role, ['sales', 'sales_staff'], true);
+    }
+
+    public function hasSalesAdministrationAccess(): bool
+    {
+        return in_array($this->role, ['executive', 'admin', 'operations_director'], true);
+    }
 }

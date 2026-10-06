@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Sale;
+use App\Models\User;
+
+class SalePolicy
+{
+    /**
+     * Determine whether the user can view any models.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->canAccessSales();
+    }
+
+    /**
+     * Determine whether the user can view the model.
+     */
+    public function view(User $user, Sale $sale): bool
+    {
+        return $user->hasSalesAdministrationAccess() || $sale->created_by === $user->id;
+    }
+
+    /**
+     * Determine whether the user can create models.
+     */
+    public function create(User $user): bool
+    {
+        return $user->canAccessSales();
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function update(User $user, Sale $sale): bool
+    {
+        return $this->view($user, $sale);
+    }
+
+    /**
+     * Determine whether the user can delete the model.
+     */
+    public function delete(User $user, Sale $sale): bool
+    {
+        return $this->view($user, $sale);
+    }
+
+    /**
+     * Determine whether the user can restore the model.
+     */
+    public function restore(User $user, Sale $sale): bool
+    {
+        return $this->view($user, $sale);
+    }
+
+    /**
+     * Determine whether the user can permanently delete the model.
+     */
+    public function forceDelete(User $user, Sale $sale): bool
+    {
+        return false;
+    }
+
+    public function export(User $user): bool
+    {
+        return $user->canAccessSales();
+    }
+}

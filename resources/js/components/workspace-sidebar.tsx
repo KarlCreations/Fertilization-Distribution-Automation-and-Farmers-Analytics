@@ -12,7 +12,12 @@ const workspaceLinks = [
         roles: ['subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff'],
     },
     { label: 'My inventory dashboard', icon: Package, routeName: 'inventory-dashboard', roles: ['inventory', 'inventory_staff'] },
-    { label: 'My sales dashboard', icon: Truck, routeName: 'sales-dashboard', roles: ['sales', 'sales_staff'] },
+    {
+        label: 'Sales dashboard',
+        icon: Truck,
+        routeName: 'sales-dashboard',
+        roles: ['executive', 'admin', 'operations_director', 'sales', 'sales_staff'],
+    },
     { label: 'My finance dashboard', icon: WalletCards, routeName: 'finance-dashboard', roles: ['finance', 'finance_staff'] },
     { label: 'My HR dashboard', icon: UsersRound, routeName: 'hr-dashboard', roles: ['hr', 'hr_employee'] },
     {
