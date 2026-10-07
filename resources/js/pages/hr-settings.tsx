@@ -4,6 +4,7 @@ import { Bell, CircleHelp, KeyRound, Leaf, LoaderCircle, Menu, Search, ShieldChe
 
 import InputError from '@/components/input-error';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,13 +41,27 @@ function initials(name: string) {
         .toUpperCase();
 }
 
-export default function HrSettings({ profile }: { profile: ProfileData }) {
+type NotificationPreferences = {
+    leave_alerts: boolean;
+    attendance_alerts: boolean;
+    shift_alerts: boolean;
+    employee_updates: boolean;
+};
+
+export default function HrSettings({
+    profile,
+    notificationPreferences,
+}: {
+    profile: ProfileData;
+    notificationPreferences?: NotificationPreferences;
+}) {
     const { auth, flash } = usePage<SharedData & { flash?: { success?: string; error?: string } }>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
     const employee = profile.employee;
     const avatar = profile.user.avatar ?? (auth.user.avatar as string | null) ?? null;
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [photoError, setPhotoError] = useState<string | null>(null);
     const [photoProcessing, setPhotoProcessing] = useState(false);
 
@@ -68,6 +83,18 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
         password_confirmation: '',
     });
 
+    const {
+        data: notifData,
+        setData: setNotifData,
+        post: postNotif,
+        processing: notifProcessing,
+    } = useForm({
+        leave_alerts: Boolean(notificationPreferences?.leave_alerts ?? true),
+        attendance_alerts: Boolean(notificationPreferences?.attendance_alerts ?? true),
+        shift_alerts: Boolean(notificationPreferences?.shift_alerts ?? true),
+        employee_updates: Boolean(notificationPreferences?.employee_updates ?? true),
+    });
+
     const submitProfile: FormEventHandler = (e) => {
         e.preventDefault();
         patch(route('hr-profile.update'));
@@ -77,6 +104,13 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
         e.preventDefault();
         putPassword(route('hr-profile.password'), {
             onSuccess: () => resetPassword(),
+        });
+    };
+
+    const submitNotificationPreferences: FormEventHandler = (e) => {
+        e.preventDefault();
+        postNotif(route('hr.settings.notifications'), {
+            preserveScroll: true,
         });
     };
 
@@ -93,9 +127,14 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
         setPhotoError(null);
 
         router.post(route('hr-profile.photo'), formData, {
+            preserveScroll: true,
             onFinish: () => {
                 setPhotoProcessing(false);
                 setPhotoFile(null);
+                if (photoPreviewUrl) {
+                    URL.revokeObjectURL(photoPreviewUrl);
+                }
+                setPhotoPreviewUrl(null);
                 const input = document.getElementById('profile_photo_input') as HTMLInputElement | null;
                 if (input) input.value = '';
             },
@@ -105,7 +144,13 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
 
     const handlePhotoSelection = (event: ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0] ?? null;
+
+        if (photoPreviewUrl) {
+            URL.revokeObjectURL(photoPreviewUrl);
+        }
+
         setPhotoFile(selectedFile);
+        setPhotoPreviewUrl(selectedFile ? URL.createObjectURL(selectedFile) : null);
         setPhotoError(null);
     };
 
@@ -116,53 +161,8 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
     return (
         <>
             <Head title="My HR settings" />
-            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
-                            <Leaf className="size-4" />
-                        </span>
-                        <span className="font-semibold">{systemName}</span>
-                    </div>
-                    <label className="relative mx-auto hidden max-w-md flex-1 md:block">
-                        <span className="sr-only">Search</span>
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
-                        <input
-                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3]"
-                            placeholder="Search settings"
-                        />
-                    </label>
-                    <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="flex size-9 items-center justify-center rounded-md text-[#475467]"
-                        >
-                            <Bell className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
-                        {avatar ? (
-                            <img src={avatar} alt={profile.user.name} className="size-8 rounded-full object-cover" />
-                        ) : (
-                            <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
-                                {initials(profile.user.name)}
-                            </div>
-                        )}
-                    </div>
-                </header>
+            <div className="hr-interface min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <WorkspaceHeader />
 
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
@@ -204,7 +204,9 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
                         <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
                             <aside className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                 <div className="flex flex-col items-center text-center">
-                                    {avatar ? (
+                                    {photoPreviewUrl ? (
+                                        <img src={photoPreviewUrl} alt="Selected photo preview" className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]" />
+                                    ) : avatar ? (
                                         <img src={avatar} alt={profile.user.name} className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]" />
                                     ) : (
                                         <div className="flex size-24 items-center justify-center rounded-full bg-[#eff4ff] text-2xl font-semibold text-[#175cd3]">
@@ -378,6 +380,78 @@ export default function HrSettings({ profile }: { profile: ProfileData }) {
                                         <div className="flex items-center justify-end">
                                             <Button type="submit" variant="secondary" disabled={passwordProcessing}>
                                                 {passwordProcessing ? 'Updating...' : 'Update password'}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                </section>
+
+                                <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                    <div className="mb-5 flex items-center gap-3">
+                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#eff4ff] text-[#175cd3]">
+                                            <Bell className="size-4" />
+                                        </span>
+                                        <div>
+                                            <h2 className="text-lg font-semibold text-[#101828]">Notification preferences</h2>
+                                            <p className="text-sm text-[#667085]">Turn HR operational notifications and system alerts on or off.</p>
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={submitNotificationPreferences} className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-[#101828]">Leave request alerts</p>
+                                                <p className="text-xs text-[#667085]">Get notified when employees submit or update leave applications.</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifData.leave_alerts}
+                                                onChange={(e) => setNotifData('leave_alerts', e.target.checked)}
+                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-[#101828]">Attendance alerts</p>
+                                                <p className="text-xs text-[#667085]">Get notified for late check-ins, unexcused absences, or overtime.</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifData.attendance_alerts}
+                                                onChange={(e) => setNotifData('attendance_alerts', e.target.checked)}
+                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-[#101828]">Shift schedule alerts</p>
+                                                <p className="text-xs text-[#667085]">Get notified when shifts are assigned, changed, or swapped.</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifData.shift_alerts}
+                                                onChange={(e) => setNotifData('shift_alerts', e.target.checked)}
+                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-[#101828]">Employee roster updates</p>
+                                                <p className="text-xs text-[#667085]">Get notified when new employees are added or statuses are updated.</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={notifData.employee_updates}
+                                                onChange={(e) => setNotifData('employee_updates', e.target.checked)}
+                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-end pt-2">
+                                            <Button type="submit" disabled={notifProcessing}>
+                                                {notifProcessing ? 'Saving...' : 'Save notification preferences'}
                                             </Button>
                                         </div>
                                     </form>

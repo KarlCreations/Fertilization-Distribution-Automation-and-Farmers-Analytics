@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Bell, CircleHelp, Leaf, Menu, Pencil, Search, Settings, ShieldCheck, UserRound } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { type SharedData } from '@/types';
 
 type ProfileData = {
@@ -58,57 +59,8 @@ export default function HrProfile({ profile }: { profile: ProfileData }) {
     return (
         <>
             <Head title="My profile" />
-            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
-                            <Leaf className="size-4" />
-                        </span>
-                        <span className="font-semibold">{systemName}</span>
-                    </div>
-                    <label className="relative mx-auto hidden max-w-md flex-1 md:block">
-                        <span className="sr-only">Search</span>
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
-                        <input
-                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3]"
-                            placeholder="Search settings"
-                        />
-                    </label>
-                    <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="flex size-9 items-center justify-center rounded-md text-[#475467]"
-                        >
-                            <Bell className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
-                        {profile.user.avatar || auth.user.avatar ? (
-                            <img
-                                src={profile.user.avatar ?? String(auth.user.avatar)}
-                                alt={profile.user.name}
-                                className="size-8 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
-                                {initials(profile.user.name)}
-                            </div>
-                        )}
-                    </div>
-                </header>
+            <div className="hr-interface min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <WorkspaceHeader />
 
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />

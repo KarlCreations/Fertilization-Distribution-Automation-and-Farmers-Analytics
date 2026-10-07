@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +27,50 @@ class HrController extends Controller
         $activeEmployees = DB::table('erp_employees')->where('is_active', true)->count();
         $fieldAssigned = DB::table('erp_employees')->whereNotNull('zone_id')->count();
         $openActionsCount = DB::table('erp_staffing_actions')->whereIn('status', ['open', 'in_progress'])->count();
-        $totalShiftsToday = DB::table('erp_shifts')->whereDate('shift_date', now()->format('Y-m-d'))->count();
+        $todayStr = now()->format('Y-m-d');
+        $attendanceSummary = $this->attendanceSummary($this->dailyAttendance($todayStr));
+        $attendanceActivity = $activeEmployees > 0
+            ? round((($attendanceSummary['present'] + $attendanceSummary['late']) / $activeEmployees) * 100, 1)
+            : 0;
+
+        // Pending leave requests
+        $pendingLeaveRequests = DB::table('erp_leave_requests')
+            ->join('erp_employees', 'erp_employees.id', '=', 'erp_leave_requests.employee_id')
+            ->join('users', 'users.id', '=', 'erp_employees.user_id')
+            ->where('erp_leave_requests.status', 'pending')
+            ->orderByDesc('erp_leave_requests.created_at')
+            ->limit(6)
+            ->get([
+                'erp_leave_requests.id',
+                'erp_leave_requests.leave_type',
+                'erp_leave_requests.start_date',
+                'erp_leave_requests.end_date',
+                'erp_leave_requests.reason',
+                'erp_leave_requests.status',
+                'erp_leave_requests.created_at',
+                'users.name as employee_name',
+                'erp_employees.employee_code',
+                'erp_employees.department',
+            ]);
+
+        // Upcoming employee schedules
+        $upcomingSchedules = DB::table('erp_shifts')
+            ->join('erp_employees', 'erp_employees.id', '=', 'erp_shifts.employee_id')
+            ->join('users', 'users.id', '=', 'erp_employees.user_id')
+            ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_shifts.zone_id')
+            ->where('erp_shifts.shift_date', '>=', now()->format('Y-m-d'))
+            ->orderBy('erp_shifts.shift_date')
+            ->limit(6)
+            ->get([
+                'erp_shifts.id',
+                'erp_shifts.shift_type',
+                'erp_shifts.shift_date',
+                'erp_shifts.status',
+                'erp_shifts.notes',
+                'users.name as employee_name',
+                'erp_employees.employee_code',
+                'erp_zones.name as zone_name',
+            ]);
 
         // Department breakdown
         $departmentBreakdown = DB::table('erp_employees')
@@ -77,9 +124,18 @@ class HrController extends Controller
                 'metrics' => [
                     'workforceRoster' => $totalEmployees,
                     'fieldReadiness' => $fieldAssigned,
-                    'attendanceActivity' => $totalShiftsToday > 0 ? round(($activeEmployees / max(1, $totalEmployees)) * 100, 1) : 96.4,
+                    'attendanceActivity' => $attendanceActivity,
                     'openStaffingActions' => $openActionsCount,
+                    'attendanceSummary' => [
+                        'present' => $attendanceSummary['present'],
+                        'late' => $attendanceSummary['late'],
+                        'absent' => $attendanceSummary['absent'],
+                        'onLeave' => $attendanceSummary['on_leave'],
+                        'restDay' => $attendanceSummary['rest_day'],
+                    ],
                 ],
+                'pendingLeaveRequests' => $pendingLeaveRequests,
+                'upcomingSchedules' => $upcomingSchedules,
                 'recentActivity' => $recentActivity,
                 'fieldOperations' => $fieldOperations,
                 'staffingActions' => $staffingActions,
@@ -113,13 +169,14 @@ class HrController extends Controller
             ? round(($activeAssignedCount / $totalCount) * 100, 1)
             : 0;
 
-        $employees = DB::table('erp_employees')
+        $employeesRaw = DB::table('erp_employees')
             ->join('users', 'users.id', '=', 'erp_employees.user_id')
             ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_employees.zone_id')
             ->leftJoin('erp_depots', 'erp_depots.id', '=', 'erp_employees.depot_id')
             ->orderBy('users.name')
             ->get([
                 'erp_employees.id',
+                'erp_employees.user_id',
                 'erp_employees.employee_code',
                 'erp_employees.department',
                 'erp_employees.position',
@@ -134,6 +191,32 @@ class HrController extends Controller
                 'erp_depots.id as depot_id',
                 'erp_depots.name as depot_name',
             ]);
+
+        // Attach attendance summaries, assigned shifts, and leave records to each employee
+        $employees = $employeesRaw->map(function ($emp) {
+            $attendanceRecords = DB::table('erp_attendance_records')->where('employee_id', $emp->id)->get();
+            $shift = DB::table('erp_shifts')
+                ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_shifts.zone_id')
+                ->where('employee_id', $emp->id)
+                ->orderByDesc('shift_date')
+                ->first(['erp_shifts.*', 'erp_zones.name as zone_name']);
+
+            $leaves = DB::table('erp_leave_requests')
+                ->where('employee_id', $emp->id)
+                ->orderByDesc('created_at')
+                ->get();
+
+            return array_merge((array) $emp, [
+                'attendance_summary' => [
+                    'present' => $attendanceRecords->where('status', 'present')->count(),
+                    'late' => $attendanceRecords->where('status', 'late')->count(),
+                    'absent' => $attendanceRecords->where('status', 'absent')->count(),
+                    'on_leave' => $attendanceRecords->where('status', 'on_leave')->count(),
+                ],
+                'assigned_shift' => $shift,
+                'leave_requests' => $leaves,
+            ]);
+        });
 
         $zones = DB::table('erp_zones')
             ->leftJoin('erp_employees', 'erp_employees.zone_id', '=', 'erp_zones.id')
@@ -193,6 +276,295 @@ class HrController extends Controller
     }
 
     /**
+     * Display the Attendance & Leave management page.
+     */
+    public function attendanceLeave(Request $request): Response
+    {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $selectedDate = $validated['date'] ?? now()->toDateString();
+        $dailyAttendance = $this->dailyAttendance($selectedDate);
+
+        $attendanceRecords = DB::table('erp_attendance_records')
+            ->join('erp_employees', 'erp_employees.id', '=', 'erp_attendance_records.employee_id')
+            ->join('users', 'users.id', '=', 'erp_employees.user_id')
+            ->orderByDesc('erp_attendance_records.date')
+            ->get([
+                'erp_attendance_records.id',
+                'erp_attendance_records.date',
+                'erp_attendance_records.status',
+                'erp_attendance_records.clock_in',
+                'erp_attendance_records.clock_out',
+                'erp_attendance_records.notes',
+                'users.name as employee_name',
+                'users.email as employee_email',
+                'erp_employees.employee_code',
+                'erp_employees.department',
+            ]);
+
+        $leaveRequests = DB::table('erp_leave_requests')
+            ->join('erp_employees', 'erp_employees.id', '=', 'erp_leave_requests.employee_id')
+            ->join('users', 'users.id', '=', 'erp_employees.user_id')
+            ->leftJoin('users as reviewers', 'reviewers.id', '=', 'erp_leave_requests.reviewed_by')
+            ->orderByDesc('erp_leave_requests.created_at')
+            ->get([
+                'erp_leave_requests.id',
+                'erp_leave_requests.leave_type',
+                'erp_leave_requests.start_date',
+                'erp_leave_requests.end_date',
+                'erp_leave_requests.reason',
+                'erp_leave_requests.status',
+                'erp_leave_requests.admin_notes',
+                'erp_leave_requests.created_at',
+                'users.name as employee_name',
+                'users.email as employee_email',
+                'erp_employees.employee_code',
+                'erp_employees.department',
+                'reviewers.name as reviewer_name',
+            ]);
+
+        $summary = $this->attendanceSummary($dailyAttendance);
+        $summary['pending_leaves'] = $leaveRequests->where('status', 'pending')->count();
+
+        return Inertia::render('hr-attendance-leave', [
+            'summary' => $summary,
+            'selectedDate' => $selectedDate,
+            'dailyAttendance' => $dailyAttendance,
+            'attendanceRecords' => $attendanceRecords,
+            'leaveRequests' => $leaveRequests,
+        ]);
+    }
+
+    /**
+     * Save attendance for every active employee on the selected date.
+     */
+    public function storeDailyAttendance(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'attendance' => ['required', 'array', 'min:1'],
+            'attendance.*.employee_id' => [
+                'required',
+                'integer',
+                'distinct',
+                Rule::exists('erp_employees', 'id')->where('is_active', true),
+            ],
+            'attendance.*.status' => ['required', 'in:present,absent,on_leave,rest_day'],
+            'attendance.*.time_in' => ['nullable', 'date_format:H:i'],
+            'attendance.*.time_out' => ['nullable', 'date_format:H:i'],
+        ]);
+
+        foreach ($validated['attendance'] as $index => $record) {
+            if ($record['status'] === 'present' && empty($record['time_in'])) {
+                throw ValidationException::withMessages([
+                    "attendance.{$index}.time_in" => 'Enter a time in for employees marked Present.',
+                ]);
+            }
+
+            if (
+                $record['status'] === 'present'
+                && ! empty($record['time_out'])
+                && $record['time_out'] < $record['time_in']
+            ) {
+                throw ValidationException::withMessages([
+                    "attendance.{$index}.time_out" => 'Time out must be after time in.',
+                ]);
+            }
+        }
+
+        $activeEmployeeIds = DB::table('erp_employees')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+        $submittedEmployeeIds = collect($validated['attendance'])
+            ->pluck('employee_id')
+            ->map(fn ($id): int => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
+        $expectedEmployeeIds = collect($activeEmployeeIds)->sort()->values()->all();
+
+        if ($submittedEmployeeIds !== $expectedEmployeeIds) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Refresh the attendance list and submit every active employee.',
+            ]);
+        }
+
+        $date = $validated['date'];
+        $approvedLeaveEmployeeIds = DB::table('erp_leave_requests')
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->pluck('employee_id')
+            ->flip();
+        $now = now();
+
+        DB::transaction(function () use ($validated, $approvedLeaveEmployeeIds, $date, $now): void {
+            $records = collect($validated['attendance'])
+                ->map(function (array $record) use ($approvedLeaveEmployeeIds, $date, $now): array {
+                    $hasTimeIn = ! empty($record['time_in']);
+                    $status = $record['status'];
+
+                    if (! $hasTimeIn && $approvedLeaveEmployeeIds->has($record['employee_id'])) {
+                        $status = 'on_leave';
+                    } elseif ($status === 'present' && Carbon::createFromFormat('H:i', $record['time_in'])->format('H:i:s') > '08:00:00') {
+                        $status = 'late';
+                    }
+
+                    return [
+                        'employee_id' => $record['employee_id'],
+                        'date' => $date,
+                        'status' => $status,
+                        'clock_in' => $hasTimeIn ? Carbon::createFromFormat('H:i', $record['time_in'])->format('h:i A') : null,
+                        'clock_out' => ! empty($record['time_out'])
+                            ? Carbon::createFromFormat('H:i', $record['time_out'])->format('h:i A')
+                            : null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                })
+                ->all();
+
+            DB::table('erp_attendance_records')->upsert(
+                $records,
+                ['employee_id', 'date'],
+                ['status', 'clock_in', 'clock_out', 'updated_at'],
+            );
+        });
+
+        return redirect()
+            ->route('hr-attendance-leave', ['date' => $date])
+            ->with('success', 'Daily attendance saved successfully.');
+    }
+
+    /**
+     * Build one attendance row per active employee for a selected date.
+     */
+    private function dailyAttendance(string $date): Collection
+    {
+        $employees = DB::table('erp_employees')
+            ->join('users', 'users.id', '=', 'erp_employees.user_id')
+            ->where('erp_employees.is_active', true)
+            ->orderBy('users.name')
+            ->get([
+                'erp_employees.id',
+                'erp_employees.employee_code',
+                'erp_employees.department',
+                'users.name as employee_name',
+            ]);
+
+        $employeeIds = $employees->pluck('id');
+        $attendanceByEmployee = DB::table('erp_attendance_records')
+            ->whereDate('date', $date)
+            ->whereIn('employee_id', $employeeIds)
+            ->get(['employee_id', 'status', 'clock_in', 'clock_out'])
+            ->keyBy('employee_id');
+        $approvedLeaveEmployeeIds = DB::table('erp_leave_requests')
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->whereIn('employee_id', $employeeIds)
+            ->pluck('employee_id')
+            ->flip();
+        $scheduledEmployeeIds = DB::table('erp_shifts')
+            ->where('shift_date', $date)
+            ->where('status', '!=', 'cancelled')
+            ->whereIn('employee_id', $employeeIds)
+            ->pluck('employee_id')
+            ->flip();
+
+        return $employees->map(function (object $employee) use (
+            $attendanceByEmployee,
+            $approvedLeaveEmployeeIds,
+            $scheduledEmployeeIds,
+        ): array {
+            $attendance = $attendanceByEmployee->get($employee->id);
+            $clockIn = $attendance?->clock_in;
+            $hasCheckedIn = is_string($clockIn) && trim($clockIn) !== '';
+
+            if ($hasCheckedIn && in_array($attendance->status, ['present', 'late'], true)) {
+                $status = Carbon::parse($clockIn)->format('H:i:s') > '08:00:00' ? 'late' : 'present';
+            } elseif ($approvedLeaveEmployeeIds->has($employee->id)) {
+                $status = 'on_leave';
+            } elseif ($attendance && in_array($attendance->status, ['absent', 'on_leave', 'rest_day'], true)) {
+                $status = $attendance->status;
+            } elseif (! $scheduledEmployeeIds->has($employee->id)) {
+                $status = 'rest_day';
+            } else {
+                $status = 'absent';
+            }
+
+            $timeIn = $hasCheckedIn ? Carbon::parse($clockIn)->format('H:i') : null;
+            $timeOut = $hasCheckedIn && $attendance->clock_out
+                ? Carbon::parse($attendance->clock_out)->format('H:i')
+                : null;
+
+            return [
+                'id' => $employee->id,
+                'employee_code' => $employee->employee_code,
+                'employee_name' => $employee->employee_name,
+                'department' => $employee->department,
+                'clock_in' => $hasCheckedIn ? $clockIn : null,
+                'clock_out' => $hasCheckedIn ? $attendance->clock_out : null,
+                'time_in' => $timeIn,
+                'time_out' => $timeOut,
+                'status' => $status,
+                'has_approved_leave' => $approvedLeaveEmployeeIds->has($employee->id),
+            ];
+        });
+    }
+
+    /**
+     * @return array{active_employees: int, present: int, late: int, absent: int, on_leave: int, rest_day: int}
+     */
+    private function attendanceSummary(Collection $dailyAttendance): array
+    {
+        return [
+            'active_employees' => $dailyAttendance->count(),
+            'present' => $dailyAttendance->where('status', 'present')->count(),
+            'late' => $dailyAttendance->where('status', 'late')->count(),
+            'absent' => $dailyAttendance->where('status', 'absent')->count(),
+            'on_leave' => $dailyAttendance->where('status', 'on_leave')->count(),
+            'rest_day' => $dailyAttendance->where('status', 'rest_day')->count(),
+        ];
+    }
+
+    /**
+     * Approve or reject a leave request.
+     */
+    public function reviewLeaveRequest(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected',
+            'admin_notes' => 'nullable|string|max:500',
+        ]);
+
+        $leave = DB::table('erp_leave_requests')->where('id', $id)->first();
+        if (! $leave) {
+            return back()->with('error', 'Leave request not found.');
+        }
+
+        DB::table('erp_leave_requests')->where('id', $id)->update([
+            'status' => $validated['status'],
+            'reviewed_by' => auth()->id(),
+            'admin_notes' => $validated['admin_notes'] ?? null,
+            'updated_at' => now(),
+        ]);
+
+        $this->logAuditEvent(
+            $validated['status'] === 'approved' ? 'LEAVE_REQUEST_APPROVED' : 'LEAVE_REQUEST_REJECTED',
+            'LeaveRequest',
+            (string) $id,
+            ['employee_id' => $leave->employee_id, 'status' => $validated['status']]
+        );
+
+        return back()->with('success', "Leave request has been {$validated['status']}.");
+    }
+
+    /**
      * Store a newly created employee in database.
      */
     public function storeEmployee(Request $request): RedirectResponse
@@ -209,18 +581,25 @@ class HrController extends Controller
         ]);
 
         $now = now();
+        $email = strtolower(trim($validated['email']));
 
-        $user = DB::table('users')->where('email', $validated['email'])->first();
+        $user = DB::table('users')->where('email', $email)->first();
         if (! $user) {
             $userId = DB::table('users')->insertGetId([
                 'name' => $validated['name'],
-                'email' => $validated['email'],
+                'email' => $email,
                 'password' => Hash::make('password123'),
                 'role' => 'hr_employee',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
         } else {
+            $existingEmployee = DB::table('erp_employees')->where('user_id', $user->id)->first();
+            if ($existingEmployee) {
+                throw ValidationException::withMessages([
+                    'email' => 'This Gmail/user is already registered as an employee.',
+                ]);
+            }
             $userId = $user->id;
         }
 
@@ -236,16 +615,7 @@ class HrController extends Controller
             'updated_at' => $now,
         ]);
 
-        DB::table('erp_audit_events')->insert([
-            'user_id' => auth()->id(),
-            'action' => 'EMPLOYEE_ADDED',
-            'module' => 'hr',
-            'target_type' => 'Employee',
-            'target_id' => $validated['employee_code'],
-            'payload' => json_encode($validated),
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+        $this->logAuditEvent('EMPLOYEE_ADDED', 'Employee', $validated['employee_code'], $validated);
 
         return back()->with('success', "Employee {$validated['name']} added successfully.");
     }
@@ -272,16 +642,7 @@ class HrController extends Controller
             'updated_at' => now(),
         ]);
 
-        DB::table('erp_audit_events')->insert([
-            'user_id' => auth()->id(),
-            'action' => 'EMPLOYEE_UPDATED',
-            'module' => 'hr',
-            'target_type' => 'Employee',
-            'target_id' => (string) $id,
-            'payload' => json_encode($validated),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->logAuditEvent('EMPLOYEE_UPDATED', 'Employee', (string) $id, $validated);
 
         return back()->with('success', 'Employee record updated successfully.');
     }
@@ -310,16 +671,7 @@ class HrController extends Controller
             'updated_at' => now(),
         ]);
 
-        DB::table('erp_audit_events')->insert([
-            'user_id' => auth()->id(),
-            'action' => 'SHIFT_SCHEDULED',
-            'module' => 'hr',
-            'target_type' => 'Shift',
-            'target_id' => (string) $validated['employee_id'],
-            'payload' => json_encode($validated),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->logAuditEvent('SHIFT_SCHEDULED', 'Shift', (string) $validated['employee_id'], $validated);
 
         return back()->with('success', 'Shift scheduled successfully.');
     }
@@ -365,9 +717,43 @@ class HrController extends Controller
      */
     public function hrSettings(): Response
     {
+        $user = auth()->user();
+        $notifPrefs = DB::table('hr_notification_preferences')->where('user_id', $user->id)->first();
+        if (! $notifPrefs) {
+            $notifPrefs = (object) [
+                'leave_alerts' => true,
+                'attendance_alerts' => true,
+                'shift_alerts' => true,
+                'employee_updates' => true,
+            ];
+        }
+
         return Inertia::render('hr-settings', [
             'profile' => $this->profilePayload(),
+            'notificationPreferences' => $notifPrefs,
         ]);
+    }
+
+    /**
+     * Update Notification Preferences.
+     */
+    public function updateNotificationPreferences(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'leave_alerts' => 'required|boolean',
+            'attendance_alerts' => 'required|boolean',
+            'shift_alerts' => 'required|boolean',
+            'employee_updates' => 'required|boolean',
+        ]);
+
+        DB::table('hr_notification_preferences')->updateOrInsert(
+            ['user_id' => auth()->id()],
+            array_merge($validated, ['updated_at' => now()])
+        );
+
+        $this->logAuditEvent('NOTIFICATION_PREFERENCES_UPDATED', 'UserSettings', (string) auth()->id(), $validated);
+
+        return back()->with('success', 'Notification preferences saved successfully.');
     }
 
     /**
@@ -542,54 +928,5 @@ class HrController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    /**
-     * Display HR & System Settings page.
-     */
-    public function settings(): Response
-    {
-        $settingsRaw = DB::table('hr_system_settings')->pluck('value', 'key')->toArray();
-
-        return Inertia::render('employee-settings', [
-            'settings' => $settingsRaw,
-            'user' => [
-                'name' => auth()->user()->name,
-                'email' => auth()->user()->email,
-                'role' => auth()->user()->role,
-            ],
-        ]);
-    }
-
-    /**
-     * Save HR & System Settings.
-     */
-    public function updateSettings(Request $request): RedirectResponse
-    {
-        $data = $request->all();
-        $now = now();
-
-        foreach ($data as $key => $value) {
-            if (is_array($value)) {
-                $value = json_encode($value);
-            }
-            DB::table('hr_system_settings')->updateOrInsert(
-                ['key' => (string) $key],
-                ['value' => (string) $value, 'updated_at' => $now, 'created_at' => $now]
-            );
-        }
-
-        DB::table('erp_audit_events')->insert([
-            'user_id' => auth()->id(),
-            'action' => 'HR_SETTINGS_UPDATED',
-            'module' => 'hr',
-            'target_type' => 'SystemSettings',
-            'target_id' => 'HR_CONFIG',
-            'payload' => json_encode($data),
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-
-        return back()->with('success', 'HR & System Settings updated successfully.');
     }
 }

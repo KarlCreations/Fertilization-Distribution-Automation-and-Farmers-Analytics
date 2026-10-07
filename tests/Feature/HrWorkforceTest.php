@@ -14,6 +14,56 @@ test('users without an hr role cannot open the hr workforce page', function () {
     $this->get('/hr-workforce')->assertForbidden();
 });
 
+test('adding an existing employee email returns a validation error instead of violating the unique constraint', function () {
+    $this->actingAs(User::factory()->create(['role' => 'hr']));
+
+    $employeeUser = User::factory()->create(['email' => 'existing.employee@example.com']);
+    DB::table('erp_employees')->insert([
+        'user_id' => $employeeUser->id,
+        'employee_code' => 'EMP-EXISTING-001',
+        'department' => 'Sales & Trade',
+        'position' => 'Field Inspection Officer',
+        'is_active' => true,
+    ]);
+
+    $this->from('/hr-workforce')
+        ->post(route('hr.employees.store'), [
+            'name' => $employeeUser->name,
+            'email' => $employeeUser->email,
+            'employee_code' => 'EMP-DUPLICATE-001',
+            'department' => 'Sales & Trade',
+            'position' => 'Field Inspection Officer',
+            'is_active' => true,
+        ])
+        ->assertRedirect('/hr-workforce')
+        ->assertSessionHasErrors([
+            'email' => 'This Gmail/user is already registered as an employee.',
+        ]);
+
+    $this->assertDatabaseCount('erp_employees', 1);
+});
+
+test('adding an existing user without an employee profile reuses that user account', function () {
+    $this->actingAs(User::factory()->create(['role' => 'hr']));
+
+    $employeeUser = User::factory()->create(['email' => 'new.employee@example.com']);
+
+    $this->post(route('hr.employees.store'), [
+        'name' => $employeeUser->name,
+        'email' => $employeeUser->email,
+        'employee_code' => 'EMP-NEW-001',
+        'department' => 'Sales & Trade',
+        'position' => 'Field Inspection Officer',
+        'is_active' => true,
+    ])
+        ->assertSessionHas('success', "Employee {$employeeUser->name} added successfully.");
+
+    $this->assertDatabaseHas('erp_employees', [
+        'user_id' => $employeeUser->id,
+        'employee_code' => 'EMP-NEW-001',
+    ]);
+});
+
 test('hr employees see workforce metrics computed from real database data', function () {
     $this->actingAs(User::factory()->create(['role' => 'hr_employee']));
 

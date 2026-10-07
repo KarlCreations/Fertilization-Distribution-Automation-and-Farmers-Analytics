@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
@@ -116,6 +117,16 @@ function EmptyState({ title, description, className = '' }: { title: string; des
     );
 }
 
+type LeaveItem = {
+    id: number;
+    leave_type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+    status: string;
+    created_at: string;
+};
+
 type Employee = {
     id: number;
     employee_code: string;
@@ -131,7 +142,23 @@ type Employee = {
     zone_name: string | null;
     depot_id: number | null;
     depot_name: string | null;
+    attendance_summary?: {
+        present: number;
+        late: number;
+        absent: number;
+        on_leave: number;
+    };
+    assigned_shift?: {
+        id: number;
+        shift_type: string;
+        shift_date: string;
+        status: string;
+        notes?: string | null;
+        zone_name?: string | null;
+    } | null;
+    leave_requests?: LeaveItem[];
 };
+
 
 type Zone = {
     id: number;
@@ -206,6 +233,7 @@ export default function HrWorkforce({
         post: postAdd,
         processing: addProcessing,
         reset: resetAdd,
+        errors: addErrors,
     } = useForm({
         name: '',
         email: '',
@@ -345,60 +373,8 @@ export default function HrWorkforce({
     return (
         <>
             <Head title="HR & workforce" />
-            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
-                            <Leaf className="size-4" />
-                        </span>
-                        <span className="font-semibold">{systemName}</span>
-                    </div>
-                    <label className="relative mx-auto hidden max-w-md flex-1 md:block">
-                        <span className="sr-only">Search workforce</span>
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
-                        <input
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
-                            placeholder="Search employees, shifts, or field teams"
-                        />
-                    </label>
-                    <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="relative flex size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7]"
-                        >
-                            <Bell className="size-4" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#d92d20]" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
-                        {auth.user.avatar ? (
-                            <img
-                                src={auth.user.avatar}
-                                alt={auth.user.name}
-                                className="size-8 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
-                                {auth.user.name.slice(0, 2).toUpperCase()}
-                            </div>
-                        )}
-                    </div>
-                </header>
+            <div className="hr-interface min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <WorkspaceHeader />
 
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
@@ -790,8 +766,10 @@ export default function HrWorkforce({
                                     value={addData.email}
                                     onChange={(e) => setAddData('email', e.target.value)}
                                     placeholder="e.g. j.doe@erp.org"
+                                    aria-invalid={Boolean(addErrors.email)}
                                     className="mt-1 w-full rounded-md border border-[#d0d5dd] p-2 text-xs outline-none focus:border-[#175cd3]"
                                 />
+                                {addErrors.email && <p className="mt-1 text-xs text-red-600">{addErrors.email}</p>}
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-[#344054]">Employee Code</label>
@@ -989,57 +967,164 @@ export default function HrWorkforce({
             {/* Modal: Employee details */}
             {viewingEmployee && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+                    <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
                         <div className="flex items-center justify-between border-b border-[#eaecf0] pb-3">
-                            <h2 className="text-lg font-semibold text-[#101828]">Employee details</h2>
+                            <div>
+                                <h2 className="text-lg font-semibold text-[#101828]">Employee Profile & HR Details</h2>
+                                <p className="text-xs text-[#667085]">Complete record overview and operational activity</p>
+                            </div>
                             <button type="button" onClick={() => setViewingEmployee(null)} className="text-[#667085] hover:text-[#101828]">
                                 <X className="size-5" />
                             </button>
                         </div>
-                        <div className="mt-5 flex items-center gap-4">
+
+                        {/* Personal & HR Header Header */}
+                        <div className="mt-4 flex items-center gap-4 rounded-lg border border-[#eaecf0] bg-[#f9fafb] p-4">
                             {viewingEmployee.profile_photo_path ? (
                                 <img
                                     src={photoUrl(viewingEmployee.profile_photo_path) ?? ''}
                                     alt={viewingEmployee.name}
-                                    className="size-14 rounded-full object-cover"
+                                    className="size-16 rounded-full object-cover ring-2 ring-[#eff4ff]"
                                 />
                             ) : (
-                                <span className="flex size-14 items-center justify-center rounded-full bg-[#eff4ff] text-sm font-semibold text-[#175cd3]">
+                                <span className="flex size-16 items-center justify-center rounded-full bg-[#eff4ff] text-lg font-bold text-[#175cd3]">
                                     {initials(viewingEmployee.name)}
                                 </span>
                             )}
-                            <div>
-                                <p className="text-base font-semibold text-[#101828]">{viewingEmployee.name}</p>
-                                <p className="text-sm text-[#667085]">{viewingEmployee.email}</p>
-                                <span
-                                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                        viewingEmployee.is_active ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#f2f4f7] text-[#667085]'
-                                    }`}
-                                >
-                                    {viewingEmployee.is_active ? 'Active' : 'Inactive'}
-                                </span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-base font-bold text-[#101828] truncate">{viewingEmployee.name}</h3>
+                                    <span
+                                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                            viewingEmployee.is_active ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#f2f4f7] text-[#667085]'
+                                        }`}
+                                    >
+                                        {viewingEmployee.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-[#667085] mt-0.5">{viewingEmployee.email}</p>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#475467]">
+                                    <span>Code: <strong className="font-semibold text-[#101828]">{viewingEmployee.employee_code}</strong></span>
+                                    <span>Dept: <strong className="font-semibold text-[#101828]">{viewingEmployee.department || 'Unassigned'}</strong></span>
+                                    <span>Role: <strong className="font-semibold text-[#101828]">{viewingEmployee.position || 'Staff'}</strong></span>
+                                </div>
                             </div>
                         </div>
-                        <dl className="mt-5 grid gap-3 text-xs sm:grid-cols-2">
-                            {(
-                                [
-                                    ['Employee code', viewingEmployee.employee_code],
-                                    ['Department', viewingEmployee.department || 'Unassigned department'],
-                                    ['Position', viewingEmployee.position || 'Unassigned position'],
-                                    ['Zone', viewingEmployee.zone_name || 'No zone assigned'],
-                                    ['Depot', viewingEmployee.depot_name || 'No depot assigned'],
-                                    ['Employment status', viewingEmployee.is_active ? 'Active' : 'Inactive'],
-                                    ['Record created', viewingEmployee.created_at ? new Date(viewingEmployee.created_at).toLocaleString() : '—'],
-                                    ['Last updated', viewingEmployee.updated_at ? new Date(viewingEmployee.updated_at).toLocaleString() : '—'],
-                                ] as Array<[string, string]>
-                            ).map(([label, value]) => (
-                                <div key={label} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3">
-                                    <dt className="text-[10px] font-semibold tracking-[0.08em] text-[#98a2b3] uppercase">{label}</dt>
-                                    <dd className="mt-1 font-medium text-[#344054]">{value}</dd>
+
+                        {/* Personal & HR Information */}
+                        <div className="mt-5">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-[#667085] mb-2">Personal & HR Information</h4>
+                            <dl className="grid gap-2 text-xs sm:grid-cols-2">
+                                {(
+                                    [
+                                        ['Employee code', viewingEmployee.employee_code],
+                                        ['Email address', viewingEmployee.email],
+                                        ['Department', viewingEmployee.department || 'Unassigned department'],
+                                        ['Position / Role', viewingEmployee.position || 'Unassigned position'],
+                                        ['Assigned Zone', viewingEmployee.zone_name || 'No zone assigned'],
+                                        ['Assigned Depot', viewingEmployee.depot_name || 'No depot assigned'],
+                                        ['Employment status', viewingEmployee.is_active ? 'Active' : 'Inactive'],
+                                        ['Joined / Registered', viewingEmployee.created_at ? new Date(viewingEmployee.created_at).toLocaleDateString() : '—'],
+                                    ] as Array<[string, string]>
+                                ).map(([label, value]) => (
+                                    <div key={label} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-2.5">
+                                        <dt className="text-[10px] font-semibold tracking-wider text-[#98a2b3] uppercase">{label}</dt>
+                                        <dd className="mt-0.5 font-medium text-[#344054] truncate">{value}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </div>
+
+                        {/* Attendance Summary */}
+                        <div className="mt-5">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-[#667085] mb-2">Attendance Summary</h4>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
+                                <div className="rounded-md border border-[#abefc6] bg-[#ecfdf3] p-3 text-center">
+                                    <p className="text-[10px] font-semibold text-[#067647] uppercase">Present</p>
+                                    <p className="mt-1 text-xl font-bold text-[#067647]">{viewingEmployee.attendance_summary?.present ?? 0}</p>
                                 </div>
-                            ))}
-                        </dl>
-                        <div className="mt-5 flex justify-end">
+                                <div className="rounded-md border border-[#fedf89] bg-[#fffaeb] p-3 text-center">
+                                    <p className="text-[10px] font-semibold text-[#b54708] uppercase">Late</p>
+                                    <p className="mt-1 text-xl font-bold text-[#b54708]">{viewingEmployee.attendance_summary?.late ?? 0}</p>
+                                </div>
+                                <div className="rounded-md border border-[#fecdca] bg-[#fef3f2] p-3 text-center">
+                                    <p className="text-[10px] font-semibold text-[#b42318] uppercase">Absent</p>
+                                    <p className="mt-1 text-xl font-bold text-[#b42318]">{viewingEmployee.attendance_summary?.absent ?? 0}</p>
+                                </div>
+                                <div className="rounded-md border border-[#b2ddff] bg-[#eff8ff] p-3 text-center">
+                                    <p className="text-[10px] font-semibold text-[#175cd3] uppercase">On Leave</p>
+                                    <p className="mt-1 text-xl font-bold text-[#175cd3]">{viewingEmployee.attendance_summary?.on_leave ?? 0}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Assigned Shift */}
+                        <div className="mt-5">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-[#667085] mb-2">Assigned Shift Schedule</h4>
+                            {viewingEmployee.assigned_shift ? (
+                                <div className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3 text-xs">
+                                    <div className="flex items-center justify-between font-semibold text-[#101828]">
+                                        <span className="capitalize text-[#175cd3] flex items-center gap-1.5">
+                                            <CalendarClock className="size-4" />
+                                            {viewingEmployee.assigned_shift.shift_type.replace(/_/g, ' ')}
+                                        </span>
+                                        <span className="rounded-full bg-[#eff4ff] px-2 py-0.5 text-[10px] text-[#175cd3] uppercase font-bold">
+                                            {viewingEmployee.assigned_shift.status}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-2 gap-2 text-[#475467]">
+                                        <p>Date: <strong className="font-medium text-[#101828]">{viewingEmployee.assigned_shift.shift_date}</strong></p>
+                                        <p>Zone: <strong className="font-medium text-[#101828]">{viewingEmployee.assigned_shift.zone_name || 'All Zones'}</strong></p>
+                                    </div>
+                                    {viewingEmployee.assigned_shift.notes && (
+                                        <p className="mt-2 text-[11px] text-[#667085] border-t border-[#eaecf0] pt-1.5">
+                                            Notes: {viewingEmployee.assigned_shift.notes}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-dashed border-[#d0d5dd] bg-[#fbfcfe] p-3 text-center text-xs text-[#667085]">
+                                    No active shift assigned to this employee.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Leave Information */}
+                        <div className="mt-5">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-[#667085] mb-2">Leave Information & Requests</h4>
+                            {!viewingEmployee.leave_requests || viewingEmployee.leave_requests.length === 0 ? (
+                                <div className="rounded-md border border-dashed border-[#d0d5dd] bg-[#fbfcfe] p-3 text-center text-xs text-[#667085]">
+                                    No leave records logged for this employee.
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {viewingEmployee.leave_requests.map((leave) => (
+                                        <div key={leave.id} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3 text-xs">
+                                            <div className="flex items-center justify-between font-semibold">
+                                                <span className="capitalize text-[#101828]">{leave.leave_type.replace(/_/g, ' ')}</span>
+                                                <span
+                                                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                                        leave.status === 'approved'
+                                                            ? 'bg-[#ecfdf3] text-[#067647]'
+                                                            : leave.status === 'rejected'
+                                                              ? 'bg-[#fef3f2] text-[#b42318]'
+                                                              : 'bg-[#fffaeb] text-[#b54708]'
+                                                    }`}
+                                                >
+                                                    {leave.status}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-[#667085]">
+                                                Duration: {leave.start_date} to {leave.end_date}
+                                            </p>
+                                            <p className="mt-1 text-[#475467] italic font-medium">"{leave.reason}"</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 flex justify-end border-t border-[#eaecf0] pt-4">
                             <button
                                 type="button"
                                 onClick={() => setViewingEmployee(null)}

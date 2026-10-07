@@ -157,9 +157,25 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:hr,hr_employee')
         ->name('hr-profile.photo.destroy');
 
+    Route::get('hr-attendance-leave', [HrController::class, 'attendanceLeave'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-attendance-leave');
+
+    Route::post('hr/attendance', [HrController::class, 'storeDailyAttendance'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.attendance.store');
+
+    Route::post('hr/leave-requests/{id}/review', [HrController::class, 'reviewLeaveRequest'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.leave-requests.review');
+
     Route::get('hr-settings', [HrController::class, 'hrSettings'])
         ->middleware('role:hr,hr_employee')
         ->name('hr-settings');
+
+    Route::post('hr/settings/notifications', [HrController::class, 'updateNotificationPreferences'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.settings.notifications');
 
     Route::get('system-admin', function () {
         return Inertia::render('system-admin');
