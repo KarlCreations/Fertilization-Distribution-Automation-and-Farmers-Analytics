@@ -1,8 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    Bell,
-    ChevronDown,
-    CircleHelp,
     ClipboardList,
     Download,
     Fingerprint,
@@ -11,7 +8,6 @@ import {
     Leaf,
     LogOut,
     MapPinned,
-    Menu,
     Network,
     Plus,
     Search,
@@ -25,16 +21,20 @@ import {
     WalletCards,
     Warehouse,
 } from 'lucide-react';
+import { useState } from 'react';
 
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import PowerBiReport from '@/components/power-bi-report';
+import CrudManager from '@/components/crud-manager';
+import SystemUserManager from '@/components/system-user-manager';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metrics = [
-    { label: 'Total provisioned users', icon: UsersRound, tone: 'bg-[#eff8ff] text-[#175cd3]' },
-    { label: 'MFA & biometric security', icon: Fingerprint, tone: 'bg-[#f4f3ff] text-[#6938ef]' },
-    { label: 'Role-based access matrix', icon: ShieldCheck, tone: 'bg-[#eff4ff] text-[#175cd3]' },
-    { label: 'Subsystem health & latency', icon: Network, tone: 'bg-[#ecfdf3] text-[#067647]' },
+    { key: 'userCount', label: 'Registered user accounts', icon: UsersRound, tone: 'bg-[#eff8ff] text-[#175cd3]' },
+    { key: 'roleCount', label: 'Configured roles', icon: Fingerprint, tone: 'bg-[#f4f3ff] text-[#6938ef]' },
+    { key: 'activeEmployeeCount', label: 'Active employees', icon: ShieldCheck, tone: 'bg-[#eff4ff] text-[#175cd3]' },
+    { key: 'auditCount', label: 'Audit events', icon: Network, tone: 'bg-[#ecfdf3] text-[#067647]' },
 ];
 
 function Panel({
@@ -150,23 +150,47 @@ function Navigation() {
     );
 }
 
-export default function SystemAdmin() {
+type SystemUser = { id: number; name: string; email: string; role: string | null; is_active: boolean | null };
+type SystemRole = { id: number; code: string; name: string; description: string | null };
+type AuditEvent = { id: number; action: string; module: string | null; created_at: string; user_name: string | null };
+
+export default function SystemAdmin({
+    systemMetrics,
+    systemUsers,
+    systemRoles,
+    auditEvents,
+}: {
+    systemMetrics: Record<string, number>;
+    systemUsers: SystemUser[];
+    systemRoles: SystemRole[];
+    auditEvents: AuditEvent[];
+}) {
     const { auth } = usePage<SharedData>().props;
+    const [userSearch, setUserSearch] = useState('');
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
-    const accessColumns = ['Enterprise subsystem module', 'System admin', 'Operations director', 'Field officer', 'Warehouse manager'];
+    const accessColumns = ['Role name', 'Role code', 'Description'];
+    const filteredUsers = systemUsers.filter((user) =>
+        `${user.name} ${user.email} ${user.role ?? ''}`.toLowerCase().includes(userSearch.trim().toLowerCase()),
+    );
+
+    function exportSecurityAudit() {
+        const headers = ['ID', 'User', 'Action', 'Module', 'Date'];
+        const rows = auditEvents.map((event) => [event.id, event.user_name ?? 'System', event.action, event.module ?? 'system', event.created_at]);
+        const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const download = document.createElement('a');
+        download.href = url;
+        download.download = 'security-audit.csv';
+        download.click();
+        URL.revokeObjectURL(url);
+    }
 
     return (
         <>
             <Head title="System administration" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
+                    <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
                             <Leaf className="size-4" />
@@ -178,25 +202,14 @@ export default function SystemAdmin() {
                         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
-                            placeholder="Search users, roles, policies, or logs"
+                            placeholder="Search users by name, email, or role"
+                            value={userSearch}
+                            onChange={(event) => setUserSearch(event.target.value)}
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="relative flex size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7]"
-                        >
-                            <Bell className="size-4" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#d92d20]" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
                         <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>
@@ -205,7 +218,6 @@ export default function SystemAdmin() {
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-                        <div className="mb-4"><PowerBiReport title="System analytics" /></div>
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
@@ -222,13 +234,16 @@ export default function SystemAdmin() {
                             <div className="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
+                                    disabled
+                                    title="Backup storage is not configured."
+                                    className="flex h-9 cursor-not-allowed items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054] opacity-50"
                                 >
                                     <Vault className="size-4" />
                                     System backup
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={exportSecurityAudit}
                                     className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
                                 >
                                     <Download className="size-4" />
@@ -236,6 +251,9 @@ export default function SystemAdmin() {
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() =>
+                                        document.getElementById('system-user-manager')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                    }
                                     className="flex h-9 items-center gap-2 rounded-md bg-[#101828] px-3 text-sm font-semibold text-white"
                                 >
                                     <Plus className="size-4" />
@@ -244,7 +262,7 @@ export default function SystemAdmin() {
                             </div>
                         </div>
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Security metrics">
-                            {metrics.map(({ label, icon: Icon, tone }) => (
+                            {metrics.map(({ key, label, icon: Icon, tone }) => (
                                 <article
                                     key={label}
                                     className="rounded-lg border border-[#eaecf0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
@@ -255,11 +273,11 @@ export default function SystemAdmin() {
                                             <Icon className="size-4" />
                                         </span>
                                     </div>
-                                    <div className="mt-5 h-7 w-28 animate-pulse rounded bg-[#eef2f6]" />
+                                    <p className="mt-5 text-2xl font-semibold text-[#101828]">{(systemMetrics[key] ?? 0).toLocaleString()}</p>
                                     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f2f4f7]">
                                         <div className="h-full w-1/4 rounded-full bg-[#d0d5dd]" />
                                     </div>
-                                    <p className="mt-2 text-xs text-[#98a2b3]">Awaiting security data source</p>
+                                    <p className="mt-2 text-xs text-[#98a2b3]">Live from SQLite</p>
                                 </article>
                             ))}
                         </section>
@@ -287,12 +305,14 @@ export default function SystemAdmin() {
                             <div className="space-y-4">
                                 <Panel title="Granular role-based access control matrix" icon={ShieldCheck} className="overflow-hidden">
                                     <div className="flex flex-wrap gap-2 border-t border-[#eaecf0] p-5">
-                                        <button type="button" className="h-8 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]">
+                                        <span className="inline-flex h-8 items-center rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]">
                                             Immutable baseline
-                                        </button>
+                                        </span>
                                         <button
                                             type="button"
-                                            className="flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-medium text-[#475467]"
+                                            disabled
+                                            title="Fine-grained permission scopes are not represented by the current SQLite schema."
+                                            className="flex h-8 cursor-not-allowed items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-medium text-[#475467] opacity-50"
                                         >
                                             <SlidersHorizontal className="size-3.5" />
                                             Configure scopes
@@ -310,51 +330,64 @@ export default function SystemAdmin() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr>
-                                                    <td colSpan={5} className="px-5 py-16">
-                                                        <EmptyState
-                                                            title="No RBAC policy records available"
-                                                            description="Subsystem modules and permission scopes will appear when identity services are connected."
-                                                            className="h-36"
-                                                        />
-                                                    </td>
-                                                </tr>
+                                                {systemRoles.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={3} className="px-5 py-16 text-center text-sm text-[#667085]">
+                                                            No roles configured in SQLite.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    systemRoles.map((systemRole) => (
+                                                        <tr key={systemRole.id} className="border-t border-[#eaecf0] text-xs text-[#475467]">
+                                                            <td className="px-5 py-4 font-medium text-[#101828]">{systemRole.name}</td>
+                                                            <td className="px-5 py-4">{systemRole.code}</td>
+                                                            <td className="px-5 py-4">{systemRole.description ?? '—'}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
+                                    <CrudManager
+                                        title="System role"
+                                        records={systemRoles}
+                                        canCreate={false}
+                                        canDelete={false}
+                                        createUrl={route('system-admin')}
+                                        updateUrl={(id) => route('system-roles.update', { role: id })}
+                                        deleteUrl={() => ''}
+                                        fields={[
+                                            { name: 'code', label: 'Role code', required: true, readOnlyOnEdit: true },
+                                            { name: 'name', label: 'Role name', required: true },
+                                            { name: 'description', label: 'Description' },
+                                        ]}
+                                    />
                                 </Panel>
                                 <Panel title="User accounts & active session directory" icon={UserCog} className="overflow-hidden">
-                                    <div className="flex flex-col gap-3 border-t border-[#eaecf0] p-5 sm:flex-row">
-                                        <label className="relative min-w-0 flex-1">
-                                            <span className="sr-only">Filter directory</span>
-                                            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-[#98a2b3]" />
-                                            <input
-                                                className="h-8 w-full rounded-md bg-[#f9fafb] pr-3 pl-8 text-xs placeholder:text-[#98a2b3]"
-                                                placeholder="Filter by name, role, or scope"
-                                            />
-                                        </label>
-                                        <button
-                                            type="button"
-                                            className="flex h-8 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
-                                        >
-                                            Filters <ChevronDown className="size-3.5" />
-                                        </button>
-                                    </div>
-                                    <EmptyState
-                                        title="No user or session records available"
-                                        description="Provisioned accounts and live session details will appear after the identity database is connected."
-                                        className="mx-5 mb-5 h-40"
-                                    />
+                                    <SystemUserManager users={filteredUsers} roles={systemRoles} />
                                 </Panel>
                             </div>
                             <aside className="grid content-start gap-4">
                                 <Panel title="Real-time security & audit log" icon={ClipboardList}>
                                     <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No audit events available"
-                                            description="Security events and authorization activity will stream here."
-                                            className="h-56"
-                                        />
+                                        {auditEvents.length === 0 ? (
+                                            <EmptyState
+                                                title="No audit events yet"
+                                                description="Changes made through the application will appear here."
+                                                className="h-56"
+                                            />
+                                        ) : (
+                                            <ul className="grid gap-3 px-5 pb-5">
+                                                {auditEvents.map((event) => (
+                                                    <li key={event.id} className="border-b border-[#eaecf0] pb-3 text-xs">
+                                                        <p className="font-medium text-[#344054]">
+                                                            {event.user_name ?? 'System'} {event.action} · {event.module ?? 'system'}
+                                                        </p>
+                                                        <p className="mt-1 text-[#98a2b3]">{new Date(event.created_at).toLocaleString()}</p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
                                 </Panel>
                                 <Panel title="Subsystem integrations health" icon={Network}>

@@ -1,15 +1,11 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    Bell,
     CalendarClock,
-    ChevronDown,
-    CircleHelp,
     ClipboardList,
     LayoutDashboard,
     Leaf,
     LogOut,
     MapPinned,
-    Menu,
     Plus,
     Search,
     Settings,
@@ -19,9 +15,12 @@ import {
     WalletCards,
     Warehouse,
 } from 'lucide-react';
+import { useState } from 'react';
 
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import PowerBiReport from '@/components/power-bi-report';
+import CrudManager from '@/components/crud-manager';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metricDefinitions = [
@@ -169,33 +168,61 @@ function Navigation() {
 }
 
 type Employee = {
+    id: number;
     employee_code: string;
+    user_id: number;
     department: string | null;
     position: string | null;
     is_active: boolean;
+    zone_id: number | null;
+    depot_id: number | null;
     name: string;
     email: string;
     zone_name: string | null;
     depot_name: string | null;
 };
 
-export default function HrWorkforce({ workforceMetrics, employees }: { workforceMetrics: Record<string, number>; employees: Employee[] }) {
+export default function HrWorkforce({
+    workforceMetrics,
+    employees,
+    availableUsers,
+    zones,
+    depots,
+}: {
+    workforceMetrics: Record<string, number>;
+    employees: Employee[];
+    availableUsers: { id: number; name: string; email: string }[];
+    zones: { id: number; name: string }[];
+    depots: { id: number; name: string }[];
+}) {
     const { auth } = usePage<SharedData>().props;
+    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [employeeStatusFilter, setEmployeeStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
     const columns = ['Employee / ID', 'Role & operational depot', 'Department', 'Zone', 'Status'];
+    const filteredEmployees = employees.filter((employee) => {
+        const matchesStatus = employeeStatusFilter === 'all' || (employeeStatusFilter === 'active' ? employee.is_active : !employee.is_active);
+        const searchableText = [
+            employee.name,
+            employee.employee_code,
+            employee.email,
+            employee.position ?? '',
+            employee.department ?? '',
+            employee.zone_name ?? '',
+            employee.depot_name ?? '',
+        ]
+            .join(' ')
+            .toLowerCase();
+
+        return matchesStatus && searchableText.includes(employeeSearch.trim().toLowerCase());
+    });
 
     return (
         <>
             <Head title="HR & workforce" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
+                    <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
                             <Leaf className="size-4" />
@@ -208,24 +235,13 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
                             placeholder="Search employees, shifts, or field teams"
+                            value={employeeSearch}
+                            onChange={(event) => setEmployeeSearch(event.target.value)}
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="relative flex size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7]"
-                        >
-                            <Bell className="size-4" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#d92d20]" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
                         <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>
@@ -234,7 +250,6 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-                        <div className="mb-4"><PowerBiReport title="HR workforce analytics" /></div>
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
@@ -250,13 +265,16 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                             <div className="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
+                                    disabled
+                                    title="Shift schedules are not stored in the current SQLite schema."
+                                    className="flex h-9 cursor-not-allowed items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054] opacity-50"
                                 >
                                     <CalendarClock className="size-4" />
                                     Shift scheduler
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => document.getElementById('employee-crud')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                                     className="flex h-9 items-center gap-2 rounded-md bg-[#175cd3] px-3 text-sm font-semibold text-white hover:bg-[#1849a9]"
                                 >
                                     <Plus className="size-4" />
@@ -284,6 +302,43 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                                 </article>
                             ))}
                         </section>
+                        <CrudManager
+                            id="employee-crud"
+                            title="Employee"
+                            records={employees}
+                            createUrl={route('employees.store')}
+                            updateUrl={(id) => route('employees.update', { employee: id })}
+                            deleteUrl={(id) => route('employees.destroy', { employee: id })}
+                            canManage={auth.user.role !== 'hr_employee'}
+                            fields={[
+                                {
+                                    name: 'user_id',
+                                    label: 'User account',
+                                    type: 'select',
+                                    required: true,
+                                    displayName: 'email',
+                                    options: availableUsers.map((user) => ({ label: `${user.name} · ${user.email}`, value: user.id })),
+                                },
+                                { name: 'employee_code', label: 'Employee code', required: true },
+                                { name: 'department', label: 'Department' },
+                                { name: 'position', label: 'Position' },
+                                {
+                                    name: 'zone_id',
+                                    label: 'Zone',
+                                    type: 'select',
+                                    displayName: 'zone_name',
+                                    options: zones.map((zone) => ({ label: zone.name, value: zone.id })),
+                                },
+                                {
+                                    name: 'depot_id',
+                                    label: 'Depot',
+                                    type: 'select',
+                                    displayName: 'depot_name',
+                                    options: depots.map((depot) => ({ label: depot.name, value: depot.id })),
+                                },
+                                { name: 'is_active', label: 'Active employee', type: 'checkbox' },
+                            ]}
+                        />
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
                             <div className="space-y-4">
                                 <Panel title="Employee roster & field operations" icon={UsersRound} className="overflow-hidden">
@@ -294,14 +349,23 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                                             <input
                                                 className="h-8 w-full rounded-md bg-[#f9fafb] pr-3 pl-8 text-xs placeholder:text-[#98a2b3]"
                                                 placeholder="Search employee or ID"
+                                                value={employeeSearch}
+                                                onChange={(event) => setEmployeeSearch(event.target.value)}
                                             />
                                         </label>
-                                        <button
-                                            type="button"
-                                            className="flex h-8 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
+                                        <label className="sr-only" htmlFor="employee-status-filter">
+                                            Filter employees by status
+                                        </label>
+                                        <select
+                                            id="employee-status-filter"
+                                            value={employeeStatusFilter}
+                                            onChange={(event) => setEmployeeStatusFilter(event.target.value as typeof employeeStatusFilter)}
+                                            className="h-8 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
                                         >
-                                            All staff <ChevronDown className="size-3.5" />
-                                        </button>
+                                            <option value="all">All staff</option>
+                                            <option value="active">Active staff</option>
+                                            <option value="inactive">Inactive staff</option>
+                                        </select>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full min-w-[760px] text-left">
@@ -315,18 +379,26 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[#eaecf0]">
-                                                {employees.length === 0 ? (
+                                                {filteredEmployees.length === 0 ? (
                                                     <tr>
                                                         <td colSpan={5} className="px-5 py-16">
                                                             <EmptyState
-                                                                title="No employee records available"
-                                                                description="Employee roles, shifts, and field assignments will appear after HR data is connected."
+                                                                title={
+                                                                    employees.length === 0
+                                                                        ? 'No employee records available'
+                                                                        : 'No employees match these filters'
+                                                                }
+                                                                description={
+                                                                    employees.length === 0
+                                                                        ? 'Employee records will appear after HR data is added.'
+                                                                        : 'Change the search or status filter to view other employees.'
+                                                                }
                                                                 className="h-36"
                                                             />
                                                         </td>
                                                     </tr>
                                                 ) : (
-                                                    employees.map((employee) => (
+                                                    filteredEmployees.map((employee) => (
                                                         <tr key={employee.employee_code} className="text-xs text-[#475467]">
                                                             <td className="px-5 py-4">
                                                                 <p className="font-semibold text-[#101828]">{employee.name}</p>
@@ -334,13 +406,17 @@ export default function HrWorkforce({ workforceMetrics, employees }: { workforce
                                                                 <p className="mt-1 text-[11px] text-[#667085]">{employee.email}</p>
                                                             </td>
                                                             <td className="px-5 py-4">
-                                                                <p className="font-medium text-[#344054]">{employee.position || 'Unassigned position'}</p>
+                                                                <p className="font-medium text-[#344054]">
+                                                                    {employee.position || 'Unassigned position'}
+                                                                </p>
                                                                 <p className="mt-1">{employee.depot_name || 'No depot assigned'}</p>
                                                             </td>
                                                             <td className="px-5 py-4">{employee.department || 'Unassigned department'}</td>
                                                             <td className="px-5 py-4">{employee.zone_name || 'No zone assigned'}</td>
                                                             <td className="px-5 py-4">
-                                                                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${employee.is_active ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#f2f4f7] text-[#667085]'}`}>
+                                                                <span
+                                                                    className={`rounded-full px-2 py-1 text-[11px] font-medium ${employee.is_active ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#f2f4f7] text-[#667085]'}`}
+                                                                >
                                                                     {employee.is_active ? 'Active' : 'Inactive'}
                                                                 </span>
                                                             </td>

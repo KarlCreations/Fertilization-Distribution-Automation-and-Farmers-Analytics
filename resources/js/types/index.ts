@@ -25,6 +25,21 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    notifications: {
+        unreadCount: number;
+        items: {
+            id: number;
+            title: string;
+            description: string;
+            href: string;
+            createdAt: string;
+            isRead: boolean;
+        }[];
+    };
+    flash: {
+        success?: string;
+        error?: string;
+    };
     [key: string]: unknown;
 }
 
@@ -36,5 +51,8 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    preferences?: {
+        default_dashboard?: string;
+    } | null;
     [key: string]: unknown; // This allows for additional properties...
 }

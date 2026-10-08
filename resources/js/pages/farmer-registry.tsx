@@ -1,8 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    Bell,
-    ChevronDown,
-    CircleHelp,
     ClipboardList,
     Download,
     FileUp,
@@ -12,21 +9,22 @@ import {
     LogOut,
     Map,
     MapPinned,
-    Menu,
     Package,
     Plus,
     Search,
     Settings,
     ShieldCheck,
-    SlidersHorizontal,
     Sprout,
     Truck,
     UsersRound,
     WalletCards,
 } from 'lucide-react';
+import { useState } from 'react';
 
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import PowerBiReport from '@/components/power-bi-report';
+import CrudManager from '@/components/crud-manager';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metricDefinitions = [
@@ -59,8 +57,6 @@ const metricDefinitions = [
         format: (value: number) => `${value.toLocaleString()} MT`,
     },
 ];
-
-const filters = ['All farmers', 'Pending verification', 'Quota status', 'Service zone'];
 
 function AppNavigation() {
     return (
@@ -177,6 +173,9 @@ function EmptyState({ label, className = '' }: { label: string; className?: stri
 
 type QuotaLedgerEntry = {
     id: number;
+    farmer_id: number;
+    cycle_id: number;
+    commodity_id: number;
     farmer_name: string;
     national_id: string;
     commodity_name: string;
@@ -185,22 +184,72 @@ type QuotaLedgerEntry = {
     disbursed_qty: number;
 };
 
-export default function FarmerRegistry({ registryMetrics, quotaLedger }: { registryMetrics: Record<string, number>; quotaLedger: QuotaLedgerEntry[] }) {
+type FarmerRecord = {
+    id: number;
+    national_id: string;
+    full_name: string;
+    phone: string | null;
+    zone_id: number | null;
+    status: string;
+    biometric_verified: boolean;
+    zone_name: string | null;
+};
+
+export default function FarmerRegistry({
+    registryMetrics,
+    quotaLedger,
+    farmers,
+    zones,
+    quotaFarmers,
+    quotaCommodities,
+    subsidyCycles,
+}: {
+    registryMetrics: Record<string, number>;
+    quotaLedger: QuotaLedgerEntry[];
+    farmers: FarmerRecord[];
+    zones: { id: number; name: string }[];
+    quotaFarmers: { id: number; full_name: string; national_id: string }[];
+    quotaCommodities: { id: number; name: string; grade: string | null }[];
+    subsidyCycles: { id: number; name: string }[];
+}) {
     const { auth } = usePage<SharedData>().props;
+    const [farmerSearch, setFarmerSearch] = useState('');
+    const [farmerStatusFilter, setFarmerStatusFilter] = useState('all');
+    const [farmerZoneFilter, setFarmerZoneFilter] = useState('all');
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
+    const filteredFarmers = farmers.filter((farmer) => {
+        const matchesStatus = farmerStatusFilter === 'all' || farmer.status === farmerStatusFilter;
+        const matchesZone = farmerZoneFilter === 'all' || String(farmer.zone_id ?? '') === farmerZoneFilter;
+        const searchableText = [farmer.full_name, farmer.national_id, farmer.phone ?? '', farmer.zone_name ?? ''].join(' ').toLowerCase();
+
+        return matchesStatus && matchesZone && searchableText.includes(farmerSearch.trim().toLowerCase());
+    });
+
+    function exportFarmers() {
+        const headers = ['National ID', 'Full name', 'Phone', 'Zone', 'Status', 'Biometric verified'];
+        const rows = filteredFarmers.map((farmer) => [
+            farmer.national_id,
+            farmer.full_name,
+            farmer.phone ?? '',
+            farmer.zone_name ?? '',
+            farmer.status,
+            farmer.biometric_verified ? 'Yes' : 'No',
+        ]);
+        const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const download = document.createElement('a');
+        download.href = url;
+        download.download = 'farmer-registry.csv';
+        download.click();
+        URL.revokeObjectURL(url);
+    }
 
     return (
         <>
             <Head title="Farmer registry" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
+                    <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
                             <Leaf className="size-4" />
@@ -213,24 +262,13 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
                             placeholder="Search registry"
+                            value={farmerSearch}
+                            onChange={(event) => setFarmerSearch(event.target.value)}
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="relative flex size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7]"
-                        >
-                            <Bell className="size-4" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#d92d20]" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
                         <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>
@@ -239,7 +277,6 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-                        <div className="mb-4"><PowerBiReport title="Farmer subsidy analytics" /></div>
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
@@ -256,13 +293,16 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                             <div className="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
+                                    disabled
+                                    title="No GIS import provider is configured."
+                                    className="flex h-9 cursor-not-allowed items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054] opacity-50"
                                 >
                                     <FileUp className="size-4" />
                                     Import GIS
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={exportFarmers}
                                     className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
                                 >
                                     <Download className="size-4" />
@@ -270,6 +310,7 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => document.getElementById('farmer-crud')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                                     className="flex h-9 items-center gap-2 rounded-md bg-[#175cd3] px-3 text-sm font-semibold text-white hover:bg-[#1849a9]"
                                 >
                                     <Plus className="size-4" />
@@ -304,35 +345,82 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                                     <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
                                     <input
                                         className="h-10 w-full rounded-md border border-[#d0d5dd] bg-white pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3]"
-                                        placeholder="Search farmer name, registry ID, or parcel"
+                                        placeholder="Search farmer name, registry ID, or phone"
+                                        value={farmerSearch}
+                                        onChange={(event) => setFarmerSearch(event.target.value)}
                                     />
                                 </label>
                                 <div className="flex flex-wrap gap-2">
-                                    {filters.map((filter) => (
-                                        <button
-                                            key={filter}
-                                            type="button"
-                                            className="flex h-9 items-center gap-2 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
-                                        >
-                                            {filter}
-                                            <ChevronDown className="size-3.5" />
-                                        </button>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        aria-label="Advanced filters"
-                                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467]"
+                                    <label className="sr-only" htmlFor="farmer-status-filter">
+                                        Filter farmers by status
+                                    </label>
+                                    <select
+                                        id="farmer-status-filter"
+                                        value={farmerStatusFilter}
+                                        onChange={(event) => setFarmerStatusFilter(event.target.value)}
+                                        className="h-9 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
                                     >
-                                        <SlidersHorizontal className="size-4" />
-                                    </button>
+                                        <option value="all">All statuses</option>
+                                        <option value="pending_verification">Pending verification</option>
+                                        <option value="verified">Verified</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                    <label className="sr-only" htmlFor="farmer-zone-filter">
+                                        Filter farmers by service zone
+                                    </label>
+                                    <select
+                                        id="farmer-zone-filter"
+                                        value={farmerZoneFilter}
+                                        onChange={(event) => setFarmerZoneFilter(event.target.value)}
+                                        className="h-9 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
+                                    >
+                                        <option value="all">All service zones</option>
+                                        {zones.map((zone) => (
+                                            <option key={zone.id} value={zone.id}>
+                                                {zone.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
-                            <div className="mt-4 flex flex-wrap gap-2 border-t border-[#eaecf0] pt-4 text-xs text-[#98a2b3]">
-                                <span className="rounded bg-[#f2f4f7] px-2 py-1">Crop filter</span>
-                                <span className="rounded bg-[#f2f4f7] px-2 py-1">Parcel size</span>
-                                <span className="rounded bg-[#f2f4f7] px-2 py-1">Bank gateway</span>
-                            </div>
+                            <p className="mt-4 border-t border-[#eaecf0] pt-4 text-xs text-[#98a2b3]">
+                                Crop, parcel-size, and bank filters require data sources that are not currently configured.
+                            </p>
                         </section>
+                        <CrudManager
+                            id="farmer-crud"
+                            title="Farmer"
+                            records={filteredFarmers}
+                            totalRecordCount={farmers.length}
+                            emptyMessage={farmers.length === 0 ? 'No farmer records yet.' : 'No farmers match the current search and filters.'}
+                            createUrl={route('farmers.store')}
+                            updateUrl={(id) => route('farmers.update', { farmer: id })}
+                            deleteUrl={(id) => route('farmers.destroy', { farmer: id })}
+                            fields={[
+                                { name: 'national_id', label: 'National ID', required: true },
+                                { name: 'full_name', label: 'Full name', required: true },
+                                { name: 'phone', label: 'Phone number', displayName: 'phone' },
+                                {
+                                    name: 'zone_id',
+                                    label: 'Service zone',
+                                    type: 'select',
+                                    displayName: 'zone_name',
+                                    options: zones.map((zone) => ({ label: zone.name, value: zone.id })),
+                                },
+                                {
+                                    name: 'status',
+                                    label: 'Verification status',
+                                    type: 'select',
+                                    required: true,
+                                    options: [
+                                        { label: 'Pending verification', value: 'pending_verification' },
+                                        { label: 'Verified', value: 'verified' },
+                                        { label: 'Suspended', value: 'suspended' },
+                                    ],
+                                },
+                                { name: 'biometric_verified', label: 'Biometric verified', type: 'checkbox' },
+                            ]}
+                        />
                         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
                             <Panel title="Farmer quota and voucher ledger" icon={ClipboardList} className="overflow-hidden">
                                 <div className="border-t border-[#eaecf0] px-5 py-3 text-xs text-[#667085]">
@@ -373,7 +461,9 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                                                             </td>
                                                             <td className="px-5 py-4">{allocated.toLocaleString()} MT</td>
                                                             <td className="px-5 py-4">
-                                                                <p className="font-medium text-[#175cd3]">{disbursed.toLocaleString()} MT disbursed</p>
+                                                                <p className="font-medium text-[#175cd3]">
+                                                                    {disbursed.toLocaleString()} MT disbursed
+                                                                </p>
                                                                 <p className="mt-1 text-[#667085]">{balance.toLocaleString()} MT remaining</p>
                                                             </td>
                                                         </tr>
@@ -390,6 +480,48 @@ export default function FarmerRegistry({ registryMetrics, quotaLedger }: { regis
                                         <span className="flex size-7 items-center justify-center rounded bg-[#f9fafb]">2</span>
                                     </div>
                                 </div>
+                                <CrudManager
+                                    id="quota-crud"
+                                    title="Farmer quota"
+                                    records={quotaLedger}
+                                    createUrl={route('farmer-quotas.store')}
+                                    updateUrl={(id) => route('farmer-quotas.update', { farmerQuota: id })}
+                                    deleteUrl={(id) => route('farmer-quotas.destroy', { farmerQuota: id })}
+                                    fields={[
+                                        {
+                                            name: 'farmer_id',
+                                            label: 'Farmer',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'farmer_name',
+                                            options: quotaFarmers.map((farmer) => ({
+                                                label: `${farmer.full_name} · ${farmer.national_id}`,
+                                                value: farmer.id,
+                                            })),
+                                        },
+                                        {
+                                            name: 'cycle_id',
+                                            label: 'Subsidy cycle',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'cycle_name',
+                                            options: subsidyCycles.map((cycle) => ({ label: cycle.name, value: cycle.id })),
+                                        },
+                                        {
+                                            name: 'commodity_id',
+                                            label: 'Commodity',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'commodity_name',
+                                            options: quotaCommodities.map((commodity) => ({
+                                                label: `${commodity.name}${commodity.grade ? ` · ${commodity.grade}` : ''}`,
+                                                value: commodity.id,
+                                            })),
+                                        },
+                                        { name: 'allocated_qty', label: 'Allocated quantity (MT)', type: 'number', required: true },
+                                        { name: 'disbursed_qty', label: 'Disbursed quantity (MT)', type: 'number', required: true },
+                                    ]}
+                                />
                             </Panel>
                             <div className="grid content-start gap-4">
                                 <Panel title="Regional cadastral GIS" icon={MapPinned}>

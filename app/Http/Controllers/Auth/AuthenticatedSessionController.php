@@ -52,6 +52,21 @@ class AuthenticatedSessionController extends Controller
 
     private function dashboardRouteFor(Request $request): string
     {
+        $user = $request->user();
+        $allowedDashboards = match ($user?->role) {
+            'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => ['farmer-management-dashboard', 'farmer-registry'],
+            'inventory', 'inventory_staff' => ['inventory-dashboard'],
+            'sales', 'sales_staff' => ['sales-dashboard', 'sales-commodities'],
+            'finance', 'finance_staff' => ['finance-dashboard', 'finance-impact'],
+            'hr', 'hr_employee' => ['hr-dashboard', 'hr-workforce'],
+            default => [],
+        };
+        $preferredDashboard = data_get($user?->preferences, 'default_dashboard');
+
+        if (is_string($preferredDashboard) && in_array($preferredDashboard, $allowedDashboards, true)) {
+            return route($preferredDashboard, absolute: false);
+        }
+
         return match ($request->user()?->role) {
             'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => route('farmer-management-dashboard', absolute: false),
             'inventory', 'inventory_staff' => route('inventory-dashboard', absolute: false),
