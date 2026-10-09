@@ -1,13 +1,13 @@
-import { type ChangeEvent, type FormEventHandler, useState } from 'react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Bell, CircleHelp, KeyRound, Leaf, LoaderCircle, Menu, Search, ShieldCheck, Upload, UserRound, X } from 'lucide-react';
+import { Bell, KeyRound, LoaderCircle, ShieldCheck, Upload, UserRound, X } from 'lucide-react';
+import { type ChangeEvent, type FormEventHandler, useState } from 'react';
 
 import InputError from '@/components/input-error';
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import WorkspaceHeader from '@/components/workspace-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import WorkspaceHeader from '@/components/workspace-header';
+import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 type ProfileData = {
@@ -48,12 +48,47 @@ type NotificationPreferences = {
     employee_updates: boolean;
 };
 
+type SecurityDetails = {
+    lastPasswordChange: string | null;
+    lastLogin: string | null;
+    accountStatus: string;
+};
+
+const notificationOptions: {
+    key: keyof NotificationPreferences;
+    title: string;
+    description: string;
+}[] = [
+    {
+        key: 'leave_alerts',
+        title: 'Leave Request Notifications',
+        description: 'Get notified when employees submit or update leave applications.',
+    },
+    {
+        key: 'employee_updates',
+        title: 'Employee Update Notifications',
+        description: 'Get notified when employees are added or their details are updated.',
+    },
+    {
+        key: 'attendance_alerts',
+        title: 'Attendance Alerts',
+        description: 'Get notified about late check-ins, unexcused absences, or overtime.',
+    },
+    {
+        key: 'shift_alerts',
+        title: 'Shift Schedule Notifications',
+        description: 'Get notified when shifts are assigned, changed, or swapped.',
+    },
+];
+
 export default function HrSettings({
     profile,
     notificationPreferences,
+    security,
 }: {
     profile: ProfileData;
     notificationPreferences?: NotificationPreferences;
+    security: SecurityDetails;
 }) {
     const { auth, flash } = usePage<SharedData & { flash?: { success?: string; error?: string } }>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
@@ -205,9 +240,17 @@ export default function HrSettings({
                             <aside className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                 <div className="flex flex-col items-center text-center">
                                     {photoPreviewUrl ? (
-                                        <img src={photoPreviewUrl} alt="Selected photo preview" className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]" />
+                                        <img
+                                            src={photoPreviewUrl}
+                                            alt="Selected photo preview"
+                                            className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]"
+                                        />
                                     ) : avatar ? (
-                                        <img src={avatar} alt={profile.user.name} className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]" />
+                                        <img
+                                            src={avatar}
+                                            alt={profile.user.name}
+                                            className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]"
+                                        />
                                     ) : (
                                         <div className="flex size-24 items-center justify-center rounded-full bg-[#eff4ff] text-2xl font-semibold text-[#175cd3]">
                                             {initials(profile.user.name)}
@@ -228,7 +271,12 @@ export default function HrSettings({
                                         className="hidden"
                                         onChange={handlePhotoSelection}
                                     />
-                                    <Button type="button" variant="outline" className="w-full justify-center" onClick={() => document.getElementById('profile_photo_input')?.click()}>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full justify-center"
+                                        onClick={() => document.getElementById('profile_photo_input')?.click()}
+                                    >
                                         <Upload className="mr-2 size-4" />
                                         {avatar ? 'Change photo' : 'Upload photo'}
                                     </Button>
@@ -240,7 +288,11 @@ export default function HrSettings({
                                             onClick={uploadPhoto}
                                             disabled={photoProcessing}
                                         >
-                                            {photoProcessing ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+                                            {photoProcessing ? (
+                                                <LoaderCircle className="mr-2 size-4 animate-spin" />
+                                            ) : (
+                                                <Upload className="mr-2 size-4" />
+                                            )}
                                             Save selected photo
                                         </Button>
                                     )}
@@ -254,7 +306,7 @@ export default function HrSettings({
                                 </div>
 
                                 <div className="mt-6 rounded-lg border border-[#eaecf0] bg-[#f9fafb] p-4">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#667085]">Employment</p>
+                                    <p className="text-xs font-semibold tracking-[0.08em] text-[#667085] uppercase">Employment</p>
                                     <dl className="mt-3 space-y-3 text-sm">
                                         <div className="flex items-center justify-between gap-3">
                                             <dt className="text-[#667085]">Employee code</dt>
@@ -274,7 +326,11 @@ export default function HrSettings({
                                         </div>
                                         <div className="flex items-center justify-between gap-3">
                                             <dt className="text-[#667085]">Depot</dt>
-                                            <dd className="font-medium text-[#101828]">{employee?.depot_name ? `${employee.depot_name}${employee.depot_code ? ` (${employee.depot_code})` : ''}` : 'No depot assigned'}</dd>
+                                            <dd className="font-medium text-[#101828]">
+                                                {employee?.depot_name
+                                                    ? `${employee.depot_name}${employee.depot_code ? ` (${employee.depot_code})` : ''}`
+                                                    : 'No depot assigned'}
+                                            </dd>
                                         </div>
                                     </dl>
                                 </div>
@@ -288,7 +344,9 @@ export default function HrSettings({
                                         </span>
                                         <div>
                                             <h2 className="text-lg font-semibold text-[#101828]">Profile details</h2>
-                                            <p className="text-sm text-[#667085]">Update the public name and contact information shown in your HR profile.</p>
+                                            <p className="text-sm text-[#667085]">
+                                                Update the public name and contact information shown in your HR profile.
+                                            </p>
                                         </div>
                                     </div>
 
@@ -396,58 +454,32 @@ export default function HrSettings({
                                         </div>
                                     </div>
 
-                                    <form onSubmit={submitNotificationPreferences} className="space-y-4">
-                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
-                                            <div>
-                                                <p className="text-sm font-medium text-[#101828]">Leave request alerts</p>
-                                                <p className="text-xs text-[#667085]">Get notified when employees submit or update leave applications.</p>
+                                    <form onSubmit={submitNotificationPreferences} className="space-y-3">
+                                        {notificationOptions.map(({ key, title, description }) => (
+                                            <div
+                                                key={key}
+                                                className="flex items-center justify-between gap-4 rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4"
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-medium text-[#101828]">{title}</p>
+                                                    <p className="mt-1 text-xs leading-5 text-[#667085]">{description}</p>
+                                                </div>
+                                                <label htmlFor={`notification-${key}`} className="flex shrink-0 cursor-pointer items-center gap-2">
+                                                    <span className="sr-only">{title}</span>
+                                                    <input
+                                                        id={`notification-${key}`}
+                                                        type="checkbox"
+                                                        checked={notifData[key]}
+                                                        onChange={(e) => setNotifData(key, e.target.checked)}
+                                                        className="peer sr-only"
+                                                    />
+                                                    <span className="relative h-6 w-11 rounded-full bg-[#d0d5dd] transition-colors peer-checked:bg-[#175cd3] peer-focus-visible:ring-4 peer-focus-visible:ring-[#dbeafe] after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
+                                                    <span className="min-w-6 text-xs font-medium text-[#667085]">
+                                                        {notifData[key] ? 'On' : 'Off'}
+                                                    </span>
+                                                </label>
                                             </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={notifData.leave_alerts}
-                                                onChange={(e) => setNotifData('leave_alerts', e.target.checked)}
-                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
-                                            />
-                                        </div>
-
-                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
-                                            <div>
-                                                <p className="text-sm font-medium text-[#101828]">Attendance alerts</p>
-                                                <p className="text-xs text-[#667085]">Get notified for late check-ins, unexcused absences, or overtime.</p>
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={notifData.attendance_alerts}
-                                                onChange={(e) => setNotifData('attendance_alerts', e.target.checked)}
-                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
-                                            />
-                                        </div>
-
-                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
-                                            <div>
-                                                <p className="text-sm font-medium text-[#101828]">Shift schedule alerts</p>
-                                                <p className="text-xs text-[#667085]">Get notified when shifts are assigned, changed, or swapped.</p>
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={notifData.shift_alerts}
-                                                onChange={(e) => setNotifData('shift_alerts', e.target.checked)}
-                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
-                                            />
-                                        </div>
-
-                                        <div className="flex items-center justify-between rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-4">
-                                            <div>
-                                                <p className="text-sm font-medium text-[#101828]">Employee roster updates</p>
-                                                <p className="text-xs text-[#667085]">Get notified when new employees are added or statuses are updated.</p>
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                checked={notifData.employee_updates}
-                                                onChange={(e) => setNotifData('employee_updates', e.target.checked)}
-                                                className="size-5 rounded text-[#175cd3] focus:ring-[#175cd3]"
-                                            />
-                                        </div>
+                                        ))}
 
                                         <div className="flex items-center justify-end pt-2">
                                             <Button type="submit" disabled={notifProcessing}>
@@ -455,6 +487,51 @@ export default function HrSettings({
                                             </Button>
                                         </div>
                                     </form>
+                                </section>
+
+                                <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                    <div className="mb-5 flex items-center gap-3">
+                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#f2f4f7] text-[#344054]">
+                                            <ShieldCheck className="size-4" />
+                                        </span>
+                                        <div>
+                                            <h2 className="text-lg font-semibold text-[#101828]">Security</h2>
+                                            <p className="text-sm text-[#667085]">Review recent account activity and status.</p>
+                                        </div>
+                                    </div>
+
+                                    <dl className="divide-y divide-[#eaecf0]">
+                                        <div className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                                            <dt className="text-sm text-[#667085]">Last Password Change</dt>
+                                            <dd className="text-sm font-medium text-[#101828]">
+                                                {security.lastPasswordChange
+                                                    ? new Date(security.lastPasswordChange).toLocaleString()
+                                                    : 'Not recorded'}
+                                            </dd>
+                                        </div>
+                                        <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <dt className="text-sm text-[#667085]">Last Login</dt>
+                                            <dd className="text-sm font-medium text-[#101828]">
+                                                {security.lastLogin ? new Date(security.lastLogin).toLocaleString() : 'Not recorded'}
+                                            </dd>
+                                        </div>
+                                        <div className="flex flex-col gap-1 py-3 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                                            <dt className="text-sm text-[#667085]">Account Status</dt>
+                                            <dd>
+                                                <span
+                                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                                                        security.accountStatus === 'Active'
+                                                            ? 'bg-[#ecfdf3] text-[#067647]'
+                                                            : security.accountStatus === 'Inactive'
+                                                              ? 'bg-[#fef3f2] text-[#b42318]'
+                                                              : 'bg-[#f2f4f7] text-[#475467]'
+                                                    }`}
+                                                >
+                                                    {security.accountStatus}
+                                                </span>
+                                            </dd>
+                                        </div>
+                                    </dl>
                                 </section>
                             </div>
                         </div>

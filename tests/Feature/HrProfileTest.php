@@ -5,6 +5,53 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 
+test('an hr user sees notification preferences and recent account security details', function () {
+    $user = User::factory()->create([
+        'role' => 'hr',
+        'last_login_at' => '2026-10-08 09:30:00',
+        'password_changed_at' => '2026-10-01 14:15:00',
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get('/hr-settings')
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('hr-settings')
+            ->where('notificationPreferences.leave_alerts', true)
+            ->where('notificationPreferences.employee_updates', true)
+            ->where('notificationPreferences.attendance_alerts', true)
+            ->where('notificationPreferences.shift_alerts', true)
+            ->where('security.lastPasswordChange', '2026-10-01T14:15:00+00:00')
+            ->where('security.lastLogin', '2026-10-08T09:30:00+00:00')
+            ->where('security.accountStatus', 'Active'));
+});
+
+test('an hr user can save individual notification preferences', function () {
+    $user = User::factory()->create(['role' => 'hr']);
+
+    $response = $this
+        ->actingAs($user)
+        ->from('/hr-settings')
+        ->post('/hr/settings/notifications', [
+            'leave_alerts' => false,
+            'employee_updates' => true,
+            'attendance_alerts' => false,
+            'shift_alerts' => true,
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/hr-settings');
+
+    $this->assertDatabaseHas('hr_notification_preferences', [
+        'user_id' => $user->id,
+        'leave_alerts' => false,
+        'employee_updates' => true,
+        'attendance_alerts' => false,
+        'shift_alerts' => true,
+    ]);
+});
+
 test('guests are redirected to login when uploading a profile photo', function () {
     $this
         ->post('/hr-profile/photo', [
@@ -155,6 +202,8 @@ test('an hr user can update their profile name', function () {
 
 test('an hr user can change their password', function () {
     $user = User::factory()->create(['role' => 'hr']);
+    $passwordChangedAt = now();
+    $this->travelTo($passwordChangedAt);
 
     $response = $this
         ->actingAs($user)
@@ -173,4 +222,41 @@ test('an hr user can change their password', function () {
         'email' => $user->email,
         'password' => 'NewSecret123!',
     ]);
+
+    expect($user->refresh()->password_changed_at->toDateTimeString())
+        ->toBe($passwordChangedAt->toDateTimeString());
+});
+
+test('an hr password change from account settings records the change time', function () {
+    $user = User::factory()->create(['role' => 'hr']);
+    $passwordChangedAt = now();
+    $this->travelTo($passwordChangedAt);
+
+    $this
+        ->actingAs($user)
+        ->from('/settings/password')
+        ->put('/settings/password', [
+            'current_password' => 'password',
+            'password' => 'NewSecret123!',
+            'password_confirmation' => 'NewSecret123!',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/settings/password');
+
+    expect($user->refresh()->password_changed_at->toDateTimeString())
+        ->toBe($passwordChangedAt->toDateTimeString());
+});
+
+test('a successful hr login records the last login time', function () {
+    $user = User::factory()->create(['role' => 'hr']);
+    $loginTime = now();
+    $this->travelTo($loginTime);
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertRedirect(route('hr-dashboard', absolute: false));
+
+    expect($user->refresh()->last_login_at->toDateTimeString())
+        ->toBe($loginTime->toDateTimeString());
 });

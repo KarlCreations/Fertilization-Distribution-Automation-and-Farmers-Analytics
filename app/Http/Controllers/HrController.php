@@ -719,6 +719,8 @@ class HrController extends Controller
     {
         $user = auth()->user();
         $notifPrefs = DB::table('hr_notification_preferences')->where('user_id', $user->id)->first();
+        $profile = $this->profilePayload();
+
         if (! $notifPrefs) {
             $notifPrefs = (object) [
                 'leave_alerts' => true,
@@ -728,9 +730,24 @@ class HrController extends Controller
             ];
         }
 
+        $lastPasswordChange = $user->password_changed_at
+            ?? DB::table('erp_audit_events')
+                ->where('user_id', $user->id)
+                ->where('module', 'hr')
+                ->where('action', 'PASSWORD_CHANGED')
+                ->latest('created_at')
+                ->value('created_at');
+
         return Inertia::render('hr-settings', [
-            'profile' => $this->profilePayload(),
+            'profile' => $profile,
             'notificationPreferences' => $notifPrefs,
+            'security' => [
+                'lastPasswordChange' => $lastPasswordChange ? Carbon::parse($lastPasswordChange)->toIso8601String() : null,
+                'lastLogin' => $user->last_login_at?->toIso8601String(),
+                'accountStatus' => $profile['employee'] === null || (bool) $profile['employee']->is_active
+                    ? 'Active'
+                    : 'Inactive',
+            ],
         ]);
     }
 
@@ -788,6 +805,7 @@ class HrController extends Controller
 
         $user = $request->user();
         $user->password = Hash::make($validated['password']);
+        $user->password_changed_at = now();
         $user->save();
 
         $this->logAuditEvent('PASSWORD_CHANGED', 'User', (string) $user->id);

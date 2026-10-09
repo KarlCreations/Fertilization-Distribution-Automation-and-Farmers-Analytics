@@ -47,6 +47,13 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = $request->user();
+
+        if ($user && in_array($user->role, ['hr', 'hr_employee'], true)) {
+            $user->last_login_at = now();
+            $user->save();
+        }
+
         $request->session()->regenerate();
 
         return redirect($this->dashboardRouteFor($request));
