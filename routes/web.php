@@ -8,6 +8,11 @@ use Inertia\Inertia;
 
 Route::redirect('/', '/login')->name('home');
 
+use App\Http\Controllers\HrAuthController;
+use App\Http\Controllers\HrController;
+
+Route::get('hr-login', [HrAuthController::class, 'create'])->name('hr-login');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('power-bi/embed-config', function (PowerBiService $powerBi): JsonResponse {
         try {
@@ -46,9 +51,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'subsidy']);
     })->middleware('role:subsidy,subsidy_staff,field_operations,field_operations_staff')->name('farmer-management-dashboard');
 
-    Route::get('employee-settings', function () {
-        return Inertia::render('employee-settings');
-    })->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')->name('employee-settings');
+    Route::get('employee-settings', [HrController::class, 'settings'])
+        ->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')
+        ->name('employee-settings');
+
+    Route::post('hr/settings', [HrController::class, 'updateSettings'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.settings.update');
 
     Route::get('inventory-dashboard', function () {
         return Inertia::render('role-dashboard', ['role' => 'inventory']);
@@ -62,9 +71,9 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'finance']);
     })->middleware('role:finance,finance_staff')->name('finance-dashboard');
 
-    Route::get('hr-dashboard', function () {
-        return Inertia::render('role-dashboard', ['role' => 'hr']);
-    })->middleware('role:hr,hr_employee')->name('hr-dashboard');
+    Route::get('hr-dashboard', [HrController::class, 'dashboard'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-dashboard');
 
     Route::get('farmer-registry', function () {
         return Inertia::render('farmer-registry', [
@@ -104,31 +113,69 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('sales-commodities');
     })->middleware('role:executive,admin,operations_director,sales,sales_staff')->name('sales-commodities');
 
-    Route::get('hr-workforce', function () {
-        return Inertia::render('hr-workforce', [
-            'workforceMetrics' => [
-                'activeWorkforce' => DB::table('erp_employees')->where('is_active', true)->count(),
-                'workforceReadiness' => DB::table('erp_employees')->count(),
-                'fieldDispatch' => DB::table('erp_employees')->whereNotNull('zone_id')->count(),
-                'complianceRecords' => DB::table('erp_audit_events')->where('module', 'hr')->count(),
-            ],
-            'employees' => DB::table('erp_employees')
-                ->join('users', 'users.id', '=', 'erp_employees.user_id')
-                ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_employees.zone_id')
-                ->leftJoin('erp_depots', 'erp_depots.id', '=', 'erp_employees.depot_id')
-                ->orderBy('users.name')
-                ->get([
-                    'erp_employees.employee_code',
-                    'erp_employees.department',
-                    'erp_employees.position',
-                    'erp_employees.is_active',
-                    'users.name',
-                    'users.email',
-                    'erp_zones.name as zone_name',
-                    'erp_depots.name as depot_name',
-                ]),
-        ]);
-    })->middleware('role:executive,admin,operations_director,hr,hr_employee')->name('hr-workforce');
+    Route::get('hr-workforce', [HrController::class, 'workforce'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr-workforce');
+
+    Route::post('hr/employees', [HrController::class, 'storeEmployee'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.employees.store');
+
+    Route::post('hr/employees/{id}/update', [HrController::class, 'updateEmployee'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.employees.update');
+
+    Route::post('hr/shifts', [HrController::class, 'storeShift'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.shifts.store');
+
+    Route::post('hr/staffing-actions', [HrController::class, 'storeStaffingAction'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.staffing-actions.store');
+
+    Route::post('hr/employees/{id}/toggle-active', [HrController::class, 'toggleEmployeeStatus'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.employees.toggle');
+
+    Route::get('hr-profile', [HrController::class, 'profile'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile');
+
+    Route::patch('hr-profile', [HrController::class, 'updateProfile'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.update');
+
+    Route::put('hr-profile/password', [HrController::class, 'updatePassword'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.password');
+
+    Route::post('hr-profile/photo', [HrController::class, 'updateProfilePhoto'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.photo');
+
+    Route::delete('hr-profile/photo', [HrController::class, 'removeProfilePhoto'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.photo.destroy');
+
+    Route::get('hr-attendance-leave', [HrController::class, 'attendanceLeave'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-attendance-leave');
+
+    Route::post('hr/attendance', [HrController::class, 'storeDailyAttendance'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.attendance.store');
+
+    Route::post('hr/leave-requests/{id}/review', [HrController::class, 'reviewLeaveRequest'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.leave-requests.review');
+
+    Route::get('hr-settings', [HrController::class, 'hrSettings'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-settings');
+
+    Route::post('hr/settings/notifications', [HrController::class, 'updateNotificationPreferences'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.settings.notifications');
 
     Route::get('system-admin', function () {
         return Inertia::render('system-admin');
