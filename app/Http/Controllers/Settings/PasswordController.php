@@ -34,9 +34,14 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        $user = $request->user();
+        $user->password = Hash::make($validated['password']);
+
+        if (in_array($user->role, ['hr', 'hr_employee'], true)) {
+            $user->password_changed_at = now();
+        }
+
+        $user->save();
 
         return back();
     }

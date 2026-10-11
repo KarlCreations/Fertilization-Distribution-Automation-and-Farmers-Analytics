@@ -156,3 +156,126 @@
         @apply bg-background text-foreground;
     }
 }
+
+.dark .hr-interface {
+    background-color: #030712;
+    color: #f9fafb;
+    color-scheme: dark;
+}
+
+.dark .hr-interface [class*='bg-white'] {
+    background-color: #111827;
+}
+
+.dark .hr-interface [class*='bg-[#f6f8fb]'] {
+    background-color: #030712;
+}
+
+.dark .hr-interface [class*='bg-[#f9fafb]'],
+.dark .hr-interface [class*='bg-[#fbfcfe]'],
+.dark .hr-interface [class*='bg-[#f2f4f7]'] {
+    background-color: #1f2937;
+}
+
+.dark .hr-interface [class*='bg-[#eff4ff]'],
+.dark .hr-interface [class*='bg-[#dbeafe]'],
+.dark .hr-interface [class*='bg-[#eff8ff]'] {
+    background-color: #1e3a8a;
+}
+
+.dark .hr-interface [class*='bg-[#ecfdf3]'],
+.dark .hr-interface [class*='bg-[#d1fadf]'] {
+    background-color: #064e3b;
+}
+
+.dark .hr-interface [class*='bg-[#fffaeb]'] {
+    background-color: #78350f;
+}
+
+.dark .hr-interface [class*='bg-[#fef3f2]'],
+.dark .hr-interface [class*='bg-[#fff1f2]'] {
+    background-color: #7f1d1d;
+}
+
+.dark .hr-interface [class*='bg-[#f4f3ff]'] {
+    background-color: #3b2b64;
+}
+
+.dark .hr-interface [class*='bg-[#b2ddff]'] {
+    background-color: #60a5fa;
+}
+
+.dark .hr-interface [class*='text-[#101828]'] {
+    color: #f9fafb;
+}
+
+.dark .hr-interface [class*='text-[#344054]'] {
+    color: #e5e7eb;
+}
+
+.dark .hr-interface [class*='text-[#475467]'] {
+    color: #d1d5db;
+}
+
+.dark .hr-interface [class*='text-[#667085]'],
+.dark .hr-interface [class*='text-[#98a2b3]'] {
+    color: #9ca3af;
+}
+
+.dark .hr-interface [class*='text-[#175cd3]'] {
+    color: #60a5fa;
+}
+
+.dark .hr-interface [class*='text-[#067647]'],
+.dark .hr-interface [class*='text-[#05603a]'] {
+    color: #34d399;
+}
+
+.dark .hr-interface [class*='text-[#b42318]'],
+.dark .hr-interface [class*='text-[#912018]'],
+.dark .hr-interface [class*='text-[#912015]'] {
+    color: #fca5a5;
+}
+
+.dark .hr-interface [class*='text-[#b54708]'] {
+    color: #fbbf24;
+}
+
+.dark .hr-interface [class*='text-red-600'] {
+    color: #f87171;
+}
+
+.dark .hr-interface [class*='text-[#6938ef]'] {
+    color: #c4b5fd;
+}
+
+.dark .hr-interface [class*='border-[#eaecf0]'],
+.dark .hr-interface [class*='divide-[#eaecf0]'],
+.dark .hr-interface [class*='divide-[#f2f4f7]'] {
+    border-color: #374151;
+}
+
+.dark .hr-interface [class*='border-[#d0d5dd]'] {
+    border-color: #4b5563;
+}
+
+.dark .hr-interface [class*='border-[#abefc6]'] {
+    border-color: #065f46;
+}
+
+.dark .hr-interface [class*='border-[#fecdca]'] {
+    border-color: #7f1d1d;
+}
+
+.dark .hr-interface [class*='border-[#fedf89]'] {
+    border-color: #78350f;
+}
+
+.dark .hr-interface [class*='ring-[#eff4ff]'] {
+    --tw-ring-color: #1e3a8a;
+}
+
+.dark .hr-interface ::placeholder {
+    color: #9ca3af;
+    opacity: 1;
+}

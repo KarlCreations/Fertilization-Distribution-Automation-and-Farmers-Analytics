@@ -5,6 +5,35 @@ import { useState } from 'react';
 import WorkspaceHelpButton from '@/components/workspace-help-button';
 import WorkspaceNotifications from '@/components/workspace-notifications';
 import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
+import { useState } from 'react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import {
+    Activity,
+    Bell,
+    CalendarClock,
+    CheckCircle2,
+    CircleHelp,
+    Clock,
+    Database,
+    FileText,
+    Leaf,
+    MapPinned,
+    Menu,
+    Plus,
+    Search,
+    ShieldCheck,
+    UserCheck,
+    UserMinus,
+    UsersRound,
+    UserX,
+    Warehouse,
+    X,
+    XCircle,
+} from 'lucide-react';
+
+import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
+import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
 type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy';
@@ -33,7 +62,7 @@ const dashboardContent: Record<Role, { title: string; description: string }> = {
     },
 };
 
-const metricIcons = [UsersRound, Database, ShieldCheck, WalletCards];
+const metricIcons = [UsersRound, MapPinned, ShieldCheck, FileText];
 
 type DashboardMetric = { label: string; value: number | string };
 type DashboardRecord = { name: string; detail: string; status: string; value: number | string };
@@ -534,6 +563,31 @@ export default function RoleDashboard({
 
     usePoll(30_000, { only: ['metrics', 'records', 'inventoryCharts', 'roleCharts'] });
 
+    const [showActionModal, setShowActionModal] = useState(false);
+    const { data: actionData, setData: setActionData, post: postAction, processing: actionProcessing, reset: resetAction } = useForm({
+        title: '',
+        action_type: 'dispatch',
+        zone_id: '',
+        details: '',
+    });
+
+    const handleCreateAction = (e: React.FormEvent) => {
+        e.preventDefault();
+        postAction(route('hr.staffing-actions.store'), {
+            onSuccess: () => {
+                setShowActionModal(false);
+                resetAction();
+            },
+        });
+    };
+
+    const handleReviewLeave = (id: number, status: 'approved' | 'rejected') => {
+        router.post(route('hr.leave-requests.review', id), {
+            status,
+            admin_notes: status === 'approved' ? 'Approved by HR Manager from dashboard.' : 'Rejected from dashboard.',
+        }, { preserveScroll: true });
+    };
+
     return (
         <>
             <Head title={content.title} />
@@ -657,8 +711,67 @@ export default function RoleDashboard({
                                             Live from SQLite
                                         </p>
                                     </div>
-                                );
-                            })}
+
+                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                        <div className="flex items-start justify-between">
+                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">FIELD READINESS</p>
+                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#f4f3ff] dark:bg-gray-800 text-[#6938ef] dark:text-purple-400">
+                                                <MapPinned className="size-4" />
+                                            </span>
+                                        </div>
+                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">{dashboardData.metrics.fieldReadiness} Assigned</p>
+                                        <p className="mt-2 text-xs text-[#175cd3] dark:text-blue-400">Zones & depots active</p>
+                                    </div>
+
+                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                        <div className="flex items-start justify-between">
+                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">ATTENDANCE SUMMARY</p>
+                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#ecfdf3] dark:bg-gray-800 text-[#067647] dark:text-emerald-400">
+                                                <UserCheck className="size-4" />
+                                            </span>
+                                        </div>
+                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">
+                                            {dashboardData.metrics.attendanceSummary?.present ?? 0} Present
+                                        </p>
+                                        <p className="mt-2 text-xs text-[#667085] dark:text-gray-400">
+                                            Late: {dashboardData.metrics.attendanceSummary?.late ?? 0} | Absent:{' '}
+                                            {dashboardData.metrics.attendanceSummary?.absent ?? 0} | Leave:{' '}
+                                            {dashboardData.metrics.attendanceSummary?.onLeave ?? 0} | Rest day:{' '}
+                                            {dashboardData.metrics.attendanceSummary?.restDay ?? 0}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                        <div className="flex items-start justify-between">
+                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">OPEN STAFFING ACTIONS</p>
+                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#fffaeb] dark:bg-gray-800 text-[#b54708] dark:text-amber-400">
+                                                <FileText className="size-4" />
+                                            </span>
+                                        </div>
+                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">{dashboardData.metrics.openStaffingActions}</p>
+                                        <p className="mt-2 text-xs text-[#b54708] dark:text-amber-400">Action required</p>
+                                    </div>
+                                </>
+                            ) : (
+                                content.metrics.map((label, index) => {
+                                    const Icon = metricIcons[index];
+                                    return (
+                                        <div
+                                            key={label}
+                                            className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">{label}</p>
+                                                <span className="flex size-8 items-center justify-center rounded-md bg-[#eff4ff] dark:bg-gray-800 text-[#175cd3] dark:text-blue-400">
+                                                    <Icon className="size-4" />
+                                                </span>
+                                            </div>
+                                            <div className="mt-5 h-7 w-24 animate-pulse rounded bg-[#eef2f6] dark:bg-gray-800" />
+                                            <p className="mt-3 text-xs text-[#98a2b3] dark:text-gray-400">Awaiting data connection</p>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </section>
                         {role === 'inventory' && inventoryCharts && <InventoryInsights charts={inventoryCharts} />}
                         {role !== 'inventory' && roleCharts && <RoleInsights charts={roleCharts} />}
@@ -705,6 +818,86 @@ export default function RoleDashboard({
                     </main>
                 </div>
             </div>
+
+            {/* Staffing Action Modal */}
+            {showActionModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl border border-transparent dark:border-gray-800">
+                        <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-gray-800 pb-3">
+                            <h2 className="text-lg font-semibold text-[#101828] dark:text-white">Create Staffing Action</h2>
+                            <button type="button" onClick={() => setShowActionModal(false)} className="text-[#667085] dark:text-gray-400 hover:text-[#101828] dark:hover:text-white">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateAction} className="mt-4 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-[#344054] dark:text-gray-300">Action Title</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={actionData.title}
+                                    onChange={(e) => setActionData('title', e.target.value)}
+                                    placeholder="e.g. Dispatch 4 Field Officers to Zone 1"
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-[#344054] dark:text-gray-300">Action Type</label>
+                                <select
+                                    value={actionData.action_type}
+                                    onChange={(e) => setActionData('action_type', e.target.value)}
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                >
+                                    <option value="dispatch">Field Dispatch</option>
+                                    <option value="transfer">Zone Transfer</option>
+                                    <option value="compliance_check">Compliance Check</option>
+                                    <option value="onboarding">Staff Onboarding</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-[#344054] dark:text-gray-300">Target Zone (Optional)</label>
+                                <select
+                                    value={actionData.zone_id}
+                                    onChange={(e) => setActionData('zone_id', e.target.value)}
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                >
+                                    <option value="">Select Zone</option>
+                                    {dashboardData?.zones.map((z) => (
+                                        <option key={z.id} value={z.id}>
+                                            {z.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-[#344054] dark:text-gray-300">Details / Instructions</label>
+                                <textarea
+                                    value={actionData.details}
+                                    onChange={(e) => setActionData('details', e.target.value)}
+                                    placeholder="Add operational details..."
+                                    className="mt-1 h-20 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2 border-t border-[#eaecf0] dark:border-gray-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowActionModal(false)}
+                                    className="rounded-md border border-[#d0d5dd] dark:border-gray-700 px-4 py-2 text-xs font-medium text-[#344054] dark:text-gray-300 hover:bg-[#f9fafb] dark:hover:bg-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={actionProcessing}
+                                    className="rounded-md bg-[#175cd3] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1849a9]"
+                                >
+                                    {actionProcessing ? 'Saving...' : 'Submit Action'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

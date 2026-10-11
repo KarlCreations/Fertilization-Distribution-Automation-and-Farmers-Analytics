@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use Database\Seeders\DemoAccountsSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ class AuthenticatedSessionController extends Controller
         $response = Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $status,
+            'demoAccounts' => $this->demoAccounts(),
         ])->toResponse($request);
 
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -44,6 +46,13 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
+
+        $user = $request->user();
+
+        if ($user && in_array($user->role, ['hr', 'hr_employee'], true)) {
+            $user->last_login_at = now();
+            $user->save();
+        }
 
         $request->session()->regenerate();
 
@@ -75,6 +84,22 @@ class AuthenticatedSessionController extends Controller
             'hr', 'hr_employee' => route('hr-dashboard', absolute: false),
             default => route('dashboard', absolute: false),
         };
+    }
+
+    /**
+     * Demo credentials for the "Development quick access" buttons on the login page.
+     *
+     * Only shared in the local environment so real deployments never ship them.
+     *
+     * @return array<int, array{label: string, email: string, password: string}>
+     */
+    private function demoAccounts(): array
+    {
+        if (! app()->environment('local')) {
+            return [];
+        }
+
+        return DemoAccountsSeeder::quickAccess();
     }
 
     /**

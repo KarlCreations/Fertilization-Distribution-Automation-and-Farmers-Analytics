@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { LayoutDashboard, LogOut, Menu, Package, Settings, Sprout, Truck, UserCog, UsersRound, WalletCards, X } from 'lucide-react';
 import { useState } from 'react';
+import { CalendarClock, LayoutDashboard, LogOut, Package, Settings, Sprout, Truck, UserCog, UserRound, UsersRound, WalletCards } from 'lucide-react';
 
 import WorkspaceFlash from '@/components/workspace-flash';
 import { type SharedData } from '@/types';
@@ -17,6 +18,15 @@ export const workspaceLinks = [
     { label: 'My sales dashboard', icon: Truck, routeName: 'sales-dashboard', roles: ['sales', 'sales_staff'] },
     { label: 'My finance dashboard', icon: WalletCards, routeName: 'finance-dashboard', roles: ['finance', 'finance_staff'] },
     { label: 'My HR dashboard', icon: UsersRound, routeName: 'hr-dashboard', roles: ['hr', 'hr_employee'] },
+    {
+        label: 'HR & workforce',
+        icon: UsersRound,
+        routeName: 'hr-workforce',
+        roles: ['executive', 'admin', 'operations_director', 'hr', 'hr_employee'],
+    },
+    { label: 'Attendance & Leave', icon: CalendarClock, routeName: 'hr-attendance-leave', roles: ['hr', 'hr_employee'] },
+    { label: 'My profile', icon: UserRound, routeName: 'hr-profile', roles: ['hr', 'hr_employee'] },
+    { label: 'Settings', icon: Settings, routeName: 'hr-settings', roles: ['hr', 'hr_employee'] },
     {
         label: 'Farmer registry',
         icon: Sprout,
@@ -48,12 +58,6 @@ export const workspaceLinks = [
         routeName: 'finance-impact',
         roles: ['executive', 'admin', 'operations_director', 'finance', 'finance_staff'],
     },
-    {
-        label: 'HR & workforce',
-        icon: UsersRound,
-        routeName: 'hr-workforce',
-        roles: ['executive', 'admin', 'operations_director', 'hr', 'hr_employee'],
-    },
     { label: 'System administration', icon: UserCog, routeName: 'system-admin', roles: ['executive', 'admin', 'operations_director'] },
     { label: 'System settings', icon: Settings, routeName: 'system-settings', roles: ['executive', 'admin', 'operations_director'] },
     {
@@ -67,8 +71,6 @@ export const workspaceLinks = [
             'sales_staff',
             'finance',
             'finance_staff',
-            'hr',
-            'hr_employee',
             'subsidy',
             'subsidy_staff',
             'field_operations',

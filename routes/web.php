@@ -18,6 +18,11 @@ use Inertia\Inertia;
 
 Route::redirect('/', '/login')->name('home');
 
+use App\Http\Controllers\HrAuthController;
+use App\Http\Controllers\HrController;
+
+Route::get('hr-login', [HrAuthController::class, 'create'])->name('hr-login');
+
 Route::middleware(['auth'])->group(function () {
     Route::post('notifications/{event}/read', [NotificationController::class, 'markRead'])
         ->whereNumber('event')
@@ -77,9 +82,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'subsidy', ...$dashboardData->forRole('subsidy')]);
     })->middleware('role:subsidy,subsidy_staff,field_operations,field_operations_staff')->name('farmer-management-dashboard');
 
-    Route::get('employee-settings', function () {
-        return Inertia::render('employee-settings');
-    })->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')->name('employee-settings');
+    Route::get('employee-settings', [HrController::class, 'settings'])
+        ->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')
+        ->name('employee-settings');
+
+    Route::post('hr/settings', [HrController::class, 'updateSettings'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr.settings.update');
 
     Route::get('inventory-dashboard', function (WorkspaceDashboardData $dashboardData) {
         return Inertia::render('role-dashboard', ['role' => 'inventory', ...$dashboardData->forRole('inventory')]);
