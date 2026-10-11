@@ -37,7 +37,9 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return to_route('profile.edit');
+        return $request->routeIs('employee-settings.profile.update')
+            ? to_route('employee-settings')
+            : to_route('profile.edit');
     }
 
     /**

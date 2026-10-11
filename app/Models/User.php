@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'role',
         'password',
+        'preferences',
         'profile_photo_path',
     ];
 
@@ -71,6 +72,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
             'password' => 'hashed',
+            'preferences' => 'array',
         ];
     }
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
-    Bell,
     CalendarClock,
+    ClipboardList,
+    LayoutDashboard,
     CheckCircle2,
     CircleHelp,
     Edit3,
@@ -10,7 +11,6 @@ import {
     Leaf,
     MapPinOff,
     MapPinned,
-    Menu,
     Plus,
     Search,
     ShieldCheck,
@@ -20,7 +20,12 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
+import { useState } from 'react';
 
+import CrudManager from '@/components/crud-manager';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import WorkspaceHeader from '@/components/workspace-header';
 import PowerBiReport from '@/components/power-bi-report';
@@ -130,9 +135,12 @@ type LeaveItem = {
 type Employee = {
     id: number;
     employee_code: string;
+    user_id: number;
     department: string | null;
     position: string | null;
     is_active: boolean;
+    zone_id: number | null;
+    depot_id: number | null;
     name: string;
     email: string;
     profile_photo_path: string | null;
@@ -373,29 +381,36 @@ export default function HrWorkforce({
     return (
         <>
             <Head title="HR & workforce" />
-            <div className="hr-interface min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <WorkspaceHeader />
-
+            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                    <WorkspaceMobileNavigation />
+                    <div className="flex items-center gap-2">
+                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
+                            <Leaf className="size-4" />
+                        </span>
+                        <span className="font-semibold">{systemName}</span>
+                    </div>
+                    <label className="relative mx-auto hidden max-w-md flex-1 md:block">
+                        <span className="sr-only">Search workforce</span>
+                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
+                        <input
+                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                            placeholder="Search employees, shifts, or field teams"
+                            value={employeeSearch}
+                            onChange={(event) => setEmployeeSearch(event.target.value)}
+                        />
+                    </label>
+                    <div className="ml-auto flex items-center gap-2">
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
+                        <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
+                            {auth.user.name.slice(0, 2).toUpperCase()}
+                        </div>
+                    </div>
+                </header>
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-                        {flash?.success && (
-                            <div className="mb-4 flex items-center gap-2 rounded-md border border-[#abefc6] bg-[#ecfdf3] p-4 text-sm font-medium text-[#067647]">
-                                <CheckCircle2 className="size-5 shrink-0" />
-                                <span>{flash.success}</span>
-                            </div>
-                        )}
-                        {flash?.error && (
-                            <div className="mb-4 flex items-center gap-2 rounded-md border border-[#fecdca] bg-[#fef3f2] p-4 text-sm font-medium text-[#b42318]">
-                                <CircleHelp className="size-5 shrink-0" />
-                                <span>{flash.error}</span>
-                            </div>
-                        )}
-
-                        <div className="mb-4">
-                            <PowerBiReport title="HR workforce analytics" />
-                        </div>
-
                         <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
@@ -467,6 +482,8 @@ export default function HrWorkforce({
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 className="h-8 w-full rounded-md bg-[#f9fafb] pr-3 pl-8 text-xs placeholder:text-[#98a2b3] outline-none border border-[#eaecf0] focus:border-[#175cd3]"
                                                 placeholder="Search employee or ID"
+                                                value={employeeSearch}
+                                                onChange={(event) => setEmployeeSearch(event.target.value)}
                                             />
                                         </label>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -540,8 +557,16 @@ export default function HrWorkforce({
                                                     <tr>
                                                         <td colSpan={6} className="px-5 py-16">
                                                             <EmptyState
-                                                                title="No employee records found"
-                                                                description="Try adjusting your search criteria or add a new employee."
+                                                                title={
+                                                                    employees.length === 0
+                                                                        ? 'No employee records available'
+                                                                        : 'No employees match these filters'
+                                                                }
+                                                                description={
+                                                                    employees.length === 0
+                                                                        ? 'Employee records will appear after HR data is added.'
+                                                                        : 'Change the search or status filter to view other employees.'
+                                                                }
                                                                 className="h-36"
                                                             />
                                                         </td>

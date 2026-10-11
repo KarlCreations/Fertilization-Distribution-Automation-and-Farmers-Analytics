@@ -20,6 +20,21 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
+test('inventory users fall back to their role dashboard when their saved dashboard is unavailable', function () {
+    $user = User::factory()->create([
+        'role' => 'inventory',
+        'preferences' => ['default_dashboard' => 'inventory-warehouses'],
+    ]);
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('inventory-dashboard', absolute: false));
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 
