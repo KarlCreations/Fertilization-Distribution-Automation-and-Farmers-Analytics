@@ -189,7 +189,7 @@ function formatCurrency(value: number | string): string {
 }
 
 function formatDate(value: string): string {
-    return dateFormatter.format(new Date(`${value}T00:00:00`));
+    return dateFormatter.format(new Date(`${value.slice(0, 10)}T00:00:00`));
 }
 
 function formatNumber(value: number | string): string {
