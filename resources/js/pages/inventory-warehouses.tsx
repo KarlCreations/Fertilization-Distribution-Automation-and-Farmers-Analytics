@@ -1,9 +1,7 @@
 import { Head, Link, usePage, usePoll } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
 import {
     Boxes,
     Building2,
-    ChevronDown,
     ClipboardList,
     Download,
     FileCheck2,
@@ -27,12 +25,15 @@ import {
     WalletCards,
     Warehouse,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-import WorkspaceNotifications from '@/components/workspace-notifications';
-import WorkspaceHelpButton from '@/components/workspace-help-button';
-import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import CrudManager from '@/components/crud-manager';
+import SiloSensorReadingDialog from '@/components/silo-sensor-reading-dialog';
 import StockMovementDialog from '@/components/stock-movement-dialog';
+import WeighbridgeSlipDialog from '@/components/weighbridge-slip-dialog';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 const metrics = [
@@ -173,9 +174,34 @@ type StockRecord = {
 type DepotUtilization = { id: number; name: string; capacity_mt: number | null; on_hand_qty: number };
 type InventoryEvent = {
     id: number;
-    action: 'transferred' | 'reconciled';
+    action: 'transferred' | 'reconciled' | 'sensor_recorded' | 'weighed';
     target_id: string | null;
     payload: Record<string, unknown>;
+    created_at: string;
+    user_name: string;
+};
+type SensorReading = {
+    id: number;
+    sensor_code: string;
+    commodity_name: string;
+    depot_name: string;
+    lot_no: string;
+    level_percent: number;
+    temperature_c: number;
+    moisture_percent: number;
+    status: 'normal' | 'warning' | 'critical';
+    created_at: string;
+    user_name: string;
+};
+type WeighbridgeSlip = {
+    id: number;
+    slip_number: string;
+    direction: 'inbound' | 'outbound';
+    commodity_name: string;
+    depot_name: string;
+    lot_no: string;
+    truck_plate: string;
+    net_weight: number;
     created_at: string;
     user_name: string;
 };
@@ -194,9 +220,7 @@ function exportStockRecords(records: StockRecord[]) {
     ];
     const csv = [
         columns.map(({ label }) => `"${label}"`).join(','),
-        ...records.map((record) => columns
-            .map(({ value }) => `"${String(value(record)).replaceAll('"', '""')}"`)
-            .join(',')),
+        ...records.map((record) => columns.map(({ value }) => `"${String(value(record)).replaceAll('"', '""')}"`).join(',')),
     ].join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const download = document.createElement('a');
@@ -212,6 +236,8 @@ export default function InventoryWarehouses({
     depots,
     depotUtilization,
     recentInventoryEvents,
+    recentSensorReadings,
+    recentWeighbridgeSlips,
     latestReconciliation,
     commodities,
     batches,
@@ -221,6 +247,8 @@ export default function InventoryWarehouses({
     depots: { id: number; name: string }[];
     depotUtilization: DepotUtilization[];
     recentInventoryEvents: InventoryEvent[];
+    recentSensorReadings: SensorReading[];
+    recentWeighbridgeSlips: WeighbridgeSlip[];
     latestReconciliation: { created_at: string; target_id: string | null; user_name: string | null } | null;
     commodities: { id: number; name: string; sku: string }[];
     batches: { id: number; lot_no: string; commodity_id: number }[];
@@ -230,9 +258,19 @@ export default function InventoryWarehouses({
     const stockColumns = ['SKU & batch trace', 'Depot / physical bay', 'Capacity & reorder line', 'On-hand stock', 'Runway & status'];
 
     usePoll(30_000, {
-        only: ['inventoryMetrics', 'stockRecords', 'depotUtilization', 'recentInventoryEvents', 'latestReconciliation'],
+        only: [
+            'inventoryMetrics',
+            'stockRecords',
+            'depotUtilization',
+            'recentInventoryEvents',
+            'recentSensorReadings',
+            'recentWeighbridgeSlips',
+            'latestReconciliation',
+        ],
     });
     const [workflow, setWorkflow] = useState<'transfer' | 'reconcile' | null>(null);
+    const [sensorDialogOpen, setSensorDialogOpen] = useState(false);
+    const [weighbridgeDialogOpen, setWeighbridgeDialogOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [commodityFilter, setCommodityFilter] = useState('');
     const [depotFilter, setDepotFilter] = useState('');
@@ -242,18 +280,18 @@ export default function InventoryWarehouses({
         const query = search.trim().toLocaleLowerCase();
 
         return stockRecords.filter((stock) => {
-            const matchesSearch = !query || [
-                stock.sku,
-                stock.commodity_name,
-                stock.depot_name,
-                stock.lot_no,
-                stock.status ?? '',
-            ].some((value) => value.toLocaleLowerCase().includes(query));
+            const matchesSearch =
+                !query ||
+                [stock.sku, stock.commodity_name, stock.depot_name, stock.lot_no, stock.status ?? ''].some((value) =>
+                    value.toLocaleLowerCase().includes(query),
+                );
 
-            return matchesSearch
-                && (!commodityFilter || String(stock.commodity_id) === commodityFilter)
-                && (!depotFilter || String(stock.depot_id) === depotFilter)
-                && (!statusFilter || stock.status === statusFilter);
+            return (
+                matchesSearch &&
+                (!commodityFilter || String(stock.commodity_id) === commodityFilter) &&
+                (!depotFilter || String(stock.depot_id) === depotFilter) &&
+                (!statusFilter || stock.status === statusFilter)
+            );
         });
     }, [commodityFilter, depotFilter, search, statusFilter, stockRecords]);
     const reorderRecords = stockRecords.filter((stock) => stock.status === 'reorder_due' || stock.status === 'out_of_stock');
@@ -262,6 +300,7 @@ export default function InventoryWarehouses({
     const networkCapacityPercentage = totalDepotCapacity > 0 ? Math.min((totalDepotStock / totalDepotCapacity) * 100, 100) : null;
     const transferCount = inventoryMetrics.transferCount ?? 0;
     const reconciliationCount = inventoryMetrics.reconciliationCount ?? 0;
+    const canRecordInventory = ['executive', 'admin', 'operations_director', 'inventory', 'inventory_staff'].includes(String(auth.user.role ?? ''));
 
     return (
         <>
@@ -305,11 +344,11 @@ export default function InventoryWarehouses({
                                     <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Inventory & warehouse control</h1>
                                     <span className="flex items-center gap-1.5 rounded-full bg-[#ecfdf3] px-2.5 py-1 text-xs font-medium text-[#067647]">
                                         <Radio className="size-3" />
-                                        Live telemetry ready
+                                        Manual records · SQLite
                                     </span>
                                 </div>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-                                    Monitor depot stock, inbound activity, facility capacity, and material movement from connected sources.
+                                    Monitor depot stock, capacity, manual sensor readings, and weighbridge movements recorded against inventory.
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -367,9 +406,30 @@ export default function InventoryWarehouses({
                             updateUrl={(id) => route('stock-levels.update', { stockLevel: id })}
                             deleteUrl={(id) => route('stock-levels.destroy', { stockLevel: id })}
                             fields={[
-                                { name: 'depot_id', label: 'Depot', type: 'select', required: true, displayName: 'depot_name', options: depots.map((depot) => ({ label: depot.name, value: depot.id })) },
-                                { name: 'commodity_id', label: 'Commodity', type: 'select', required: true, displayName: 'commodity_name', options: commodities.map((commodity) => ({ label: `${commodity.sku} · ${commodity.name}`, value: commodity.id })) },
-                                { name: 'batch_id', label: 'Stock batch', type: 'select', required: true, displayName: 'lot_no', options: batches.map((batch) => ({ label: batch.lot_no, value: batch.id })) },
+                                {
+                                    name: 'depot_id',
+                                    label: 'Depot',
+                                    type: 'select',
+                                    required: true,
+                                    displayName: 'depot_name',
+                                    options: depots.map((depot) => ({ label: depot.name, value: depot.id })),
+                                },
+                                {
+                                    name: 'commodity_id',
+                                    label: 'Commodity',
+                                    type: 'select',
+                                    required: true,
+                                    displayName: 'commodity_name',
+                                    options: commodities.map((commodity) => ({ label: `${commodity.sku} · ${commodity.name}`, value: commodity.id })),
+                                },
+                                {
+                                    name: 'batch_id',
+                                    label: 'Stock batch',
+                                    type: 'select',
+                                    required: true,
+                                    displayName: 'lot_no',
+                                    options: batches.map((batch) => ({ label: batch.lot_no, value: batch.id })),
+                                },
                                 { name: 'on_hand_qty', label: 'On-hand quantity (MT)', type: 'number', required: true },
                                 { name: 'capacity_qty', label: 'Capacity (MT)', type: 'number' },
                                 { name: 'reorder_point', label: 'Reorder point (MT)', type: 'number' },
@@ -398,7 +458,11 @@ export default function InventoryWarehouses({
                                                 className="h-9 max-w-44 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs font-medium text-[#344054]"
                                             >
                                                 <option value="">All commodities</option>
-                                                {commodities.map((commodity) => <option key={commodity.id} value={commodity.id}>{commodity.name}</option>)}
+                                                {commodities.map((commodity) => (
+                                                    <option key={commodity.id} value={commodity.id}>
+                                                        {commodity.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                             <label className="relative min-w-0 flex-1">
                                                 <span className="sr-only">Search stock roster</span>
@@ -419,7 +483,11 @@ export default function InventoryWarehouses({
                                                 className="h-9 max-w-44 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs font-medium text-[#344054]"
                                             >
                                                 <option value="">All depots</option>
-                                                {depots.map((depot) => <option key={depot.id} value={depot.id}>{depot.name}</option>)}
+                                                {depots.map((depot) => (
+                                                    <option key={depot.id} value={depot.id}>
+                                                        {depot.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                             <button
                                                 type="button"
@@ -442,7 +510,9 @@ export default function InventoryWarehouses({
                                     </div>
                                     {showStatusFilter && (
                                         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#eaecf0] pt-3">
-                                            <label htmlFor="stock-status-filter" className="text-xs font-medium text-[#475467]">Stock status</label>
+                                            <label htmlFor="stock-status-filter" className="text-xs font-medium text-[#475467]">
+                                                Stock status
+                                            </label>
                                             <select
                                                 id="stock-status-filter"
                                                 value={statusFilter}
@@ -490,24 +560,40 @@ export default function InventoryWarehouses({
                                                     <tr>
                                                         <td colSpan={5} className="px-5 py-16">
                                                             <EmptyState
-                                                                title={stockRecords.length === 0 ? 'No stock records yet' : 'No matching stock records'}
-                                                                description={stockRecords.length === 0 ? 'Create a stock level to populate the active roster.' : 'Adjust or clear the active filters to see more stock.'}
+                                                                title={
+                                                                    stockRecords.length === 0 ? 'No stock records yet' : 'No matching stock records'
+                                                                }
+                                                                description={
+                                                                    stockRecords.length === 0
+                                                                        ? 'Create a stock level to populate the active roster.'
+                                                                        : 'Adjust or clear the active filters to see more stock.'
+                                                                }
                                                                 className="h-36"
                                                             />
                                                         </td>
                                                     </tr>
-                                                ) : filteredStockRecords.map((stock) => (
-                                                    <tr key={stock.id} className="text-xs text-[#475467]">
-                                                        <td className="px-5 py-4">
-                                                            <p className="font-medium text-[#101828]">{stock.sku} · {stock.commodity_name}</p>
-                                                            <p className="mt-1 text-[#98a2b3]">{stock.lot_no}</p>
-                                                        </td>
-                                                        <td className="px-5 py-4">{stock.depot_name}</td>
-                                                        <td className="px-5 py-4">{stock.capacity_qty ?? '—'} MT / reorder {stock.reorder_point ?? '—'} MT</td>
-                                                        <td className="px-5 py-4 font-medium text-[#101828]">{Number(stock.on_hand_qty).toLocaleString()} MT</td>
-                                                        <td className="px-5 py-4">{stock.runway_days ?? '—'} days · {stock.status ?? 'available'}</td>
-                                                    </tr>
-                                                ))}
+                                                ) : (
+                                                    filteredStockRecords.map((stock) => (
+                                                        <tr key={stock.id} className="text-xs text-[#475467]">
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#101828]">
+                                                                    {stock.sku} · {stock.commodity_name}
+                                                                </p>
+                                                                <p className="mt-1 text-[#98a2b3]">{stock.lot_no}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">{stock.depot_name}</td>
+                                                            <td className="px-5 py-4">
+                                                                {stock.capacity_qty ?? '—'} MT / reorder {stock.reorder_point ?? '—'} MT
+                                                            </td>
+                                                            <td className="px-5 py-4 font-medium text-[#101828]">
+                                                                {Number(stock.on_hand_qty).toLocaleString()} MT
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                {stock.runway_days ?? '—'} days · {stock.status ?? 'available'}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -520,9 +606,10 @@ export default function InventoryWarehouses({
                                         <div className="grid gap-3">
                                             <h3 className="text-xs font-semibold text-[#475467]">Depot utilization</h3>
                                             {depotUtilization.map((depot) => {
-                                                const percent = depot.capacity_mt && depot.capacity_mt > 0
-                                                    ? Math.min((depot.on_hand_qty / depot.capacity_mt) * 100, 100)
-                                                    : null;
+                                                const percent =
+                                                    depot.capacity_mt && depot.capacity_mt > 0
+                                                        ? Math.min((depot.on_hand_qty / depot.capacity_mt) * 100, 100)
+                                                        : null;
 
                                                 return (
                                                     <div key={depot.id}>
@@ -534,36 +621,53 @@ export default function InventoryWarehouses({
                                                             </span>
                                                         </div>
                                                         <div className="h-2 overflow-hidden rounded-full bg-[#f2f4f7]">
-                                                            <div
-                                                                className="h-full rounded-full bg-[#175cd3]"
-                                                                style={{ width: `${percent ?? 0}%` }}
-                                                            />
+                                                            <div className="h-full rounded-full bg-[#175cd3]" style={{ width: `${percent ?? 0}%` }} />
                                                         </div>
-                                                        {percent === null && <p className="mt-1 text-[10px] text-[#98a2b3]">Capacity not configured</p>}
+                                                        {percent === null && (
+                                                            <p className="mt-1 text-[10px] text-[#98a2b3]">Capacity not configured</p>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                         <div className="grid content-start gap-3">
-                                            <h3 className="text-xs font-semibold text-[#475467]">Recent transfers and reconciliations</h3>
+                                            <h3 className="text-xs font-semibold text-[#475467]">Recent inventory activity</h3>
                                             {recentInventoryEvents.length === 0 ? (
-                                                <EmptyState title="No movements recorded" description="Completed transfers and physical counts will appear here." className="min-h-36" />
-                                            ) : recentInventoryEvents.map((event) => (
-                                                <div key={event.id} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3">
-                                                    <div className="flex justify-between gap-2">
-                                                        <p className="text-xs font-semibold capitalize text-[#344054]">{event.action}</p>
-                                                        <time className="shrink-0 text-[10px] text-[#98a2b3]" dateTime={event.created_at}>
-                                                            {new Date(event.created_at).toLocaleDateString()}
-                                                        </time>
+                                                <EmptyState
+                                                    title="No movements recorded"
+                                                    description="Completed transfers and physical counts will appear here."
+                                                    className="min-h-36"
+                                                />
+                                            ) : (
+                                                recentInventoryEvents.map((event) => (
+                                                    <div key={event.id} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3">
+                                                        <div className="flex justify-between gap-2">
+                                                            <p className="text-xs font-semibold text-[#344054]">
+                                                                {event.action === 'sensor_recorded'
+                                                                    ? 'Sensor reading'
+                                                                    : event.action === 'weighed'
+                                                                      ? 'Weighbridge slip'
+                                                                      : event.action === 'transferred'
+                                                                        ? 'Stock transferred'
+                                                                        : 'Stock reconciled'}
+                                                            </p>
+                                                            <time className="shrink-0 text-[10px] text-[#98a2b3]" dateTime={event.created_at}>
+                                                                {new Date(event.created_at).toLocaleDateString()}
+                                                            </time>
+                                                        </div>
+                                                        <p className="mt-1 text-xs text-[#667085]">
+                                                            {event.action === 'transferred'
+                                                                ? `${String(event.payload.quantity ?? 0)} MT · depot ${String(event.payload.source_depot_id ?? '—')} to ${String(event.payload.destination_depot_id ?? '—')}`
+                                                                : event.action === 'reconciled'
+                                                                  ? `Stock #${event.target_id ?? '—'} · ${String(event.payload.previous_qty ?? 0)} → ${String(event.payload.counted_qty ?? 0)} MT`
+                                                                  : event.action === 'weighed'
+                                                                    ? `${String(event.payload.direction ?? '')} · ${String(event.payload.net_weight ?? 0)} MT · slip ${String(event.payload.slip_number ?? '—')}`
+                                                                    : `${String(event.payload.sensor_code ?? 'Sensor')} · ${String(event.payload.level_percent ?? 0)}% fill · ${String(event.payload.status ?? '')}`}
+                                                        </p>
+                                                        <p className="mt-1 text-[10px] text-[#98a2b3]">By {event.user_name}</p>
                                                     </div>
-                                                    <p className="mt-1 text-xs text-[#667085]">
-                                                        {event.action === 'transferred'
-                                                            ? `${String(event.payload.quantity ?? 0)} MT · depot ${String(event.payload.source_depot_id ?? '—')} to ${String(event.payload.destination_depot_id ?? '—')}`
-                                                            : `Stock #${event.target_id ?? '—'} · ${String(event.payload.previous_qty ?? 0)} → ${String(event.payload.counted_qty ?? 0)} MT`}
-                                                    </p>
-                                                    <p className="mt-1 text-[10px] text-[#98a2b3]">By {event.user_name}</p>
-                                                </div>
-                                            ))}
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 </Panel>
@@ -572,21 +676,34 @@ export default function InventoryWarehouses({
                                 <Panel title="Auto-procurement" icon={ClipboardList}>
                                     <div className="px-5 pb-5">
                                         {reorderRecords.length === 0 ? (
-                                            <EmptyState title="No reorder alerts" description="All recorded stock is above its reorder threshold." className="h-44" />
+                                            <EmptyState
+                                                title="No reorder alerts"
+                                                description="All recorded stock is above its reorder threshold."
+                                                className="h-44"
+                                            />
                                         ) : (
                                             <div className="grid gap-2">
                                                 {reorderRecords.slice(0, 5).map((stock) => (
-                                                    <div key={stock.id} className="flex items-center justify-between gap-3 rounded-md bg-[#fffaeb] p-3">
+                                                    <div
+                                                        key={stock.id}
+                                                        className="flex items-center justify-between gap-3 rounded-md bg-[#fffaeb] p-3"
+                                                    >
                                                         <div className="min-w-0">
-                                                            <p className="truncate text-xs font-medium text-[#344054]">{stock.commodity_name} · {stock.lot_no}</p>
+                                                            <p className="truncate text-xs font-medium text-[#344054]">
+                                                                {stock.commodity_name} · {stock.lot_no}
+                                                            </p>
                                                             <p className="mt-1 truncate text-[10px] text-[#667085]">{stock.depot_name}</p>
                                                         </div>
-                                                        <span className="shrink-0 text-xs font-semibold text-[#b54708]">{Number(stock.on_hand_qty).toLocaleString()} MT</span>
+                                                        <span className="shrink-0 text-xs font-semibold text-[#b54708]">
+                                                            {Number(stock.on_hand_qty).toLocaleString()} MT
+                                                        </span>
                                                     </div>
                                                 ))}
                                                 <button
                                                     type="button"
-                                                    onClick={() => document.getElementById('stock-crud')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                                    onClick={() =>
+                                                        document.getElementById('stock-crud')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                                    }
                                                     className="mt-1 h-9 rounded-md border border-[#d0d5dd] text-xs font-medium text-[#344054]"
                                                 >
                                                     Manage stock levels
@@ -596,21 +713,106 @@ export default function InventoryWarehouses({
                                     </div>
                                 </Panel>
                                 <Panel title="Silo & sensor telemetry" icon={Gauge}>
-                                    <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No sensor streams connected"
-                                            description="No sensor integration is configured. Stock totals and depot utilization remain live from SQLite."
-                                            className="h-44"
-                                        />
+                                    <div className="grid gap-3 px-5 pb-5">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-xs text-[#667085]">
+                                                Manual readings linked to stock; no hardware provider is connected.
+                                            </p>
+                                            {canRecordInventory && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSensorDialogOpen(true)}
+                                                    className="flex h-8 items-center gap-1.5 rounded-md border border-[#d0d5dd] px-2.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                                >
+                                                    <Plus className="size-3.5" />
+                                                    Record reading
+                                                </button>
+                                            )}
+                                        </div>
+                                        {recentSensorReadings.length === 0 ? (
+                                            <EmptyState
+                                                title="No readings recorded"
+                                                description="Manually entered fill, temperature and moisture readings will appear here."
+                                                className="h-36"
+                                            />
+                                        ) : (
+                                            recentSensorReadings.map((reading) => (
+                                                <div key={reading.id} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-xs font-semibold text-[#344054]">
+                                                                {reading.sensor_code} · {reading.commodity_name}
+                                                            </p>
+                                                            <p className="mt-1 truncate text-[10px] text-[#667085]">
+                                                                {reading.depot_name} · {reading.lot_no}
+                                                            </p>
+                                                        </div>
+                                                        <span
+                                                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${reading.status === 'critical' ? 'bg-[#fef3f2] text-[#b42318]' : reading.status === 'warning' ? 'bg-[#fffaeb] text-[#b54708]' : 'bg-[#ecfdf3] text-[#067647]'}`}
+                                                        >
+                                                            {reading.status}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-2 text-xs text-[#475467]">
+                                                        {reading.level_percent}% fill · {reading.temperature_c}°C · {reading.moisture_percent}%
+                                                        moisture
+                                                    </p>
+                                                    <p className="mt-1 text-[10px] text-[#98a2b3]">
+                                                        {new Date(reading.created_at).toLocaleString()} · {reading.user_name}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </Panel>
                                 <Panel title="Weighbridge & slip stream" icon={FileCheck2}>
-                                    <div className="px-5 pb-5">
-                                        <EmptyState
-                                            title="No weighbridge slips"
-                                            description="No weighbridge provider is configured. Stock receipts and transfers are recorded from the inventory workspace."
-                                            className="h-44"
-                                        />
+                                    <div className="grid gap-3 px-5 pb-5">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-xs text-[#667085]">Manual slips update stock balances and depot capacity.</p>
+                                            {canRecordInventory && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setWeighbridgeDialogOpen(true)}
+                                                    className="flex h-8 items-center gap-1.5 rounded-md border border-[#d0d5dd] px-2.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                                >
+                                                    <Plus className="size-3.5" />
+                                                    Record slip
+                                                </button>
+                                            )}
+                                        </div>
+                                        {recentWeighbridgeSlips.length === 0 ? (
+                                            <EmptyState
+                                                title="No weighbridge slips"
+                                                description="Record an inbound receipt or outbound dispatch to update the linked inventory balance."
+                                                className="h-36"
+                                            />
+                                        ) : (
+                                            recentWeighbridgeSlips.map((slip) => (
+                                                <div key={slip.id} className="rounded-md border border-[#eaecf0] bg-[#fbfcfe] p-3">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-xs font-semibold text-[#344054]">
+                                                                {slip.slip_number} · {slip.truck_plate}
+                                                            </p>
+                                                            <p className="mt-1 truncate text-[10px] text-[#667085]">
+                                                                {slip.commodity_name} · {slip.lot_no} · {slip.depot_name}
+                                                            </p>
+                                                        </div>
+                                                        <span
+                                                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${slip.direction === 'inbound' ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#eff8ff] text-[#175cd3]'}`}
+                                                        >
+                                                            {slip.direction}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-2 text-xs font-semibold text-[#101828]">
+                                                        {slip.net_weight.toLocaleString()} MT net
+                                                    </p>
+                                                    <p className="mt-1 text-[10px] text-[#98a2b3]">
+                                                        {new Date(slip.created_at).toLocaleString()} · {slip.user_name}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </Panel>
                             </aside>
@@ -657,6 +859,8 @@ export default function InventoryWarehouses({
                     }
                 }}
             />
+            <SiloSensorReadingDialog open={sensorDialogOpen} stocks={stockRecords} onOpenChange={setSensorDialogOpen} />
+            <WeighbridgeSlipDialog open={weighbridgeDialogOpen} stocks={stockRecords} onOpenChange={setWeighbridgeDialogOpen} />
         </>
     );
 }

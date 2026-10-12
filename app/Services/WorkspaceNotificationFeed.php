@@ -141,6 +141,8 @@ class WorkspaceNotificationFeed
             'deleted' => 'deleted',
             'transferred' => 'stock transferred',
             'reconciled' => 'stock reconciled',
+            'sensor_recorded' => 'sensor reading recorded',
+            'weighed' => 'weighbridge slip recorded',
             default => 'changed',
         };
 
@@ -165,6 +167,29 @@ class WorkspaceNotificationFeed
                 'Count adjusted from %s MT to %s MT.',
                 $details['previous_qty'] ?? '0',
                 $details['counted_qty'] ?? '0',
+            );
+        }
+
+        if ($module === 'inventory' && $action === 'sensor_recorded' && is_array($details)) {
+            return sprintf(
+                '%s at %s: %s%% silo fill, %s°C, %s%% moisture (%s).',
+                $details['sensor_code'] ?? 'Sensor',
+                $details['depot_name'] ?? 'depot',
+                $details['level_percent'] ?? '0',
+                $details['temperature_c'] ?? '0',
+                $details['moisture_percent'] ?? '0',
+                $details['status'] ?? 'unclassified',
+            );
+        }
+
+        if ($module === 'inventory' && $action === 'weighed' && is_array($details)) {
+            return sprintf(
+                '%s slip %s: %s MT %s via truck %s.',
+                $details['direction'] ?? 'Inventory',
+                $details['slip_number'] ?? '#'.$targetId,
+                $details['net_weight'] ?? '0',
+                ($details['direction'] ?? 'inbound') === 'inbound' ? 'received' : 'dispatched',
+                $details['truck_plate'] ?? 'unknown',
             );
         }
 

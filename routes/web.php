@@ -5,10 +5,12 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FarmerController;
 use App\Http\Controllers\FarmerQuotaController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SiloSensorReadingController;
 use App\Http\Controllers\StockLevelController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SystemAccessController;
 use App\Http\Controllers\TradeContractController;
+use App\Http\Controllers\WeighbridgeSlipController;
 use App\Services\PowerBiService;
 use App\Services\WorkspaceDashboardData;
 use Illuminate\Http\JsonResponse;
@@ -160,6 +162,8 @@ Route::middleware(['auth'])->group(function () {
                 'depotCount' => DB::table('erp_depots')->count(),
                 'transferCount' => DB::table('erp_audit_events')->where('module', 'inventory')->where('action', 'transferred')->count(),
                 'reconciliationCount' => DB::table('erp_audit_events')->where('module', 'inventory')->where('action', 'reconciled')->count(),
+                'sensorReadingCount' => DB::table('erp_silo_sensor_readings')->count(),
+                'weighbridgeSlipCount' => DB::table('erp_weighbridge_slips')->count(),
             ],
             'stockRecords' => DB::table('erp_stock_levels')
                 ->join('erp_commodities', 'erp_commodities.id', '=', 'erp_stock_levels.commodity_id')
@@ -198,7 +202,7 @@ Route::middleware(['auth'])->group(function () {
             'recentInventoryEvents' => DB::table('erp_audit_events')
                 ->leftJoin('users', 'users.id', '=', 'erp_audit_events.user_id')
                 ->where('erp_audit_events.module', 'inventory')
-                ->whereIn('erp_audit_events.action', ['transferred', 'reconciled'])
+                ->whereIn('erp_audit_events.action', ['transferred', 'reconciled', 'sensor_recorded', 'weighed'])
                 ->latest('erp_audit_events.id')
                 ->limit(8)
                 ->get([
@@ -218,6 +222,66 @@ Route::middleware(['auth'])->group(function () {
                     'user_name' => $event->user_name ?? 'System',
                 ])
                 ->all(),
+            'recentSensorReadings' => DB::table('erp_silo_sensor_readings')
+                ->leftJoin('users', 'users.id', '=', 'erp_silo_sensor_readings.recorded_by')
+                ->latest('erp_silo_sensor_readings.id')
+                ->limit(8)
+                ->get([
+                    'erp_silo_sensor_readings.id',
+                    'erp_silo_sensor_readings.sensor_code',
+                    'erp_silo_sensor_readings.commodity_name',
+                    'erp_silo_sensor_readings.depot_name',
+                    'erp_silo_sensor_readings.lot_no',
+                    'erp_silo_sensor_readings.level_percent',
+                    'erp_silo_sensor_readings.temperature_c',
+                    'erp_silo_sensor_readings.moisture_percent',
+                    'erp_silo_sensor_readings.status',
+                    'erp_silo_sensor_readings.created_at',
+                    'users.name as user_name',
+                ])
+                ->map(fn (object $reading): array => [
+                    'id' => (int) $reading->id,
+                    'sensor_code' => $reading->sensor_code,
+                    'commodity_name' => $reading->commodity_name,
+                    'depot_name' => $reading->depot_name,
+                    'lot_no' => $reading->lot_no,
+                    'level_percent' => (float) $reading->level_percent,
+                    'temperature_c' => (float) $reading->temperature_c,
+                    'moisture_percent' => (float) $reading->moisture_percent,
+                    'status' => $reading->status,
+                    'created_at' => (string) $reading->created_at,
+                    'user_name' => $reading->user_name ?? 'System',
+                ])
+                ->all(),
+            'recentWeighbridgeSlips' => DB::table('erp_weighbridge_slips')
+                ->leftJoin('users', 'users.id', '=', 'erp_weighbridge_slips.recorded_by')
+                ->latest('erp_weighbridge_slips.id')
+                ->limit(8)
+                ->get([
+                    'erp_weighbridge_slips.id',
+                    'erp_weighbridge_slips.slip_number',
+                    'erp_weighbridge_slips.direction',
+                    'erp_weighbridge_slips.commodity_name',
+                    'erp_weighbridge_slips.depot_name',
+                    'erp_weighbridge_slips.lot_no',
+                    'erp_weighbridge_slips.truck_plate',
+                    'erp_weighbridge_slips.net_weight',
+                    'erp_weighbridge_slips.created_at',
+                    'users.name as user_name',
+                ])
+                ->map(fn (object $slip): array => [
+                    'id' => (int) $slip->id,
+                    'slip_number' => $slip->slip_number,
+                    'direction' => $slip->direction,
+                    'commodity_name' => $slip->commodity_name,
+                    'depot_name' => $slip->depot_name,
+                    'lot_no' => $slip->lot_no,
+                    'truck_plate' => $slip->truck_plate,
+                    'net_weight' => (float) $slip->net_weight,
+                    'created_at' => (string) $slip->created_at,
+                    'user_name' => $slip->user_name ?? 'System',
+                ])
+                ->all(),
             'latestReconciliation' => DB::table('erp_audit_events')
                 ->leftJoin('users', 'users.id', '=', 'erp_audit_events.user_id')
                 ->where('erp_audit_events.module', 'inventory')
@@ -232,6 +296,13 @@ Route::middleware(['auth'])->group(function () {
             'batches' => DB::table('erp_stock_batches')->orderByDesc('id')->get(['id', 'lot_no', 'commodity_id']),
         ]);
     })->middleware('role:executive,admin,operations_director,inventory,inventory_staff,subsidy,subsidy_staff,field_operations,field_operations_staff,sales,sales_staff')->name('inventory-warehouses');
+
+    Route::post('silo-sensor-readings', [SiloSensorReadingController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,inventory,inventory_staff')
+        ->name('silo-sensor-readings.store');
+    Route::post('weighbridge-slips', [WeighbridgeSlipController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,inventory,inventory_staff')
+        ->name('weighbridge-slips.store');
 
     Route::get('finance-impact', function () {
         return Inertia::render('finance-impact', [
