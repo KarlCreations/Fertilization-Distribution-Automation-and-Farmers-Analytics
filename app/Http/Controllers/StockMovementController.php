@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\StockLevelStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +72,7 @@ class StockMovementController extends Controller
             $nextSourceQuantity = $sourceQuantity - $quantity;
             DB::table('erp_stock_levels')->where('id', $source->id)->update([
                 'on_hand_qty' => $nextSourceQuantity,
-                'status' => StockLevelStatus::for($nextSourceQuantity, $source->reorder_point),
+                'status' => $this->statusFor($nextSourceQuantity, $source->reorder_point),
                 'updated_at' => $now,
             ]);
 
@@ -86,7 +85,7 @@ class StockMovementController extends Controller
                     'capacity_qty' => null,
                     'reorder_point' => $source->reorder_point,
                     'runway_days' => null,
-                    'status' => StockLevelStatus::for($nextDestinationQuantity, $source->reorder_point),
+                    'status' => $this->statusFor($nextDestinationQuantity, $source->reorder_point),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
@@ -94,7 +93,7 @@ class StockMovementController extends Controller
                 $destinationStockId = $destinationStock->id;
                 DB::table('erp_stock_levels')->where('id', $destinationStockId)->update([
                     'on_hand_qty' => $nextDestinationQuantity,
-                    'status' => StockLevelStatus::for($nextDestinationQuantity, $destinationStock->reorder_point),
+                    'status' => $this->statusFor($nextDestinationQuantity, $destinationStock->reorder_point),
                     'updated_at' => $now,
                 ]);
             }
@@ -136,7 +135,7 @@ class StockMovementController extends Controller
 
             DB::table('erp_stock_levels')->where('id', $stock->id)->update([
                 'on_hand_qty' => $countedQuantity,
-                'status' => StockLevelStatus::for($countedQuantity, $stock->reorder_point),
+                'status' => $this->statusFor($countedQuantity, $stock->reorder_point),
                 'updated_at' => $now,
             ]);
 
@@ -149,6 +148,19 @@ class StockMovementController extends Controller
         });
 
         return to_route('inventory-warehouses')->with('success', 'Inventory count reconciled.');
+    }
+
+    private function statusFor(float $quantity, mixed $reorderPoint): string
+    {
+        if ($quantity <= 0) {
+            return 'out_of_stock';
+        }
+
+        if ($reorderPoint !== null && $quantity <= (float) $reorderPoint) {
+            return 'reorder_due';
+        }
+
+        return 'optimal';
     }
 
     /**

@@ -306,7 +306,7 @@ class WorkspaceDashboardData
     }
 
     /**
-     * @return list<array{month: string, label: string, transfers: float, reconciliationVariance: float, weighbridgeInbound: float, weighbridgeOutbound: float}>
+     * @return list<array{month: string, label: string, transfers: float, reconciliationVariance: float}>
      */
     private function monthlyInventoryActivity(): array
     {
@@ -322,14 +322,12 @@ class WorkspaceDashboardData
                 'label' => $month->format("M 'y"),
                 'transfers' => 0.0,
                 'reconciliationVariance' => 0.0,
-                'weighbridgeInbound' => 0.0,
-                'weighbridgeOutbound' => 0.0,
             ];
         }
 
         DB::table('erp_audit_events')
             ->where('module', 'inventory')
-            ->whereIn('action', ['transferred', 'reconciled', 'weighed'])
+            ->whereIn('action', ['transferred', 'reconciled'])
             ->where('created_at', '>=', $firstMonth->toDateTimeString())
             ->orderBy('id')
             ->chunkById(500, function ($events) use (&$months): void {
@@ -344,12 +342,8 @@ class WorkspaceDashboardData
 
                     if ($event->action === 'transferred') {
                         $months[$monthKey]['transfers'] += (float) ($payload['quantity'] ?? 0);
-                    } elseif ($event->action === 'reconciled') {
+                    } else {
                         $months[$monthKey]['reconciliationVariance'] += (float) ($payload['variance_qty'] ?? 0);
-                    } elseif (($payload['direction'] ?? null) === 'inbound') {
-                        $months[$monthKey]['weighbridgeInbound'] += (float) ($payload['net_weight'] ?? 0);
-                    } elseif (($payload['direction'] ?? null) === 'outbound') {
-                        $months[$monthKey]['weighbridgeOutbound'] += (float) ($payload['net_weight'] ?? 0);
                     }
                 }
             });

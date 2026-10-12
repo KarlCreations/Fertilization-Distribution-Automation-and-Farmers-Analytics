@@ -67,14 +67,7 @@ const metricIcons = [UsersRound, MapPinned, ShieldCheck, FileText];
 type DashboardMetric = { label: string; value: number | string };
 type DashboardRecord = { name: string; detail: string; status: string; value: number | string };
 type InventoryCharts = {
-    monthlyInventoryActivity: {
-        month: string;
-        label: string;
-        transfers: number;
-        reconciliationVariance: number;
-        weighbridgeInbound: number;
-        weighbridgeOutbound: number;
-    }[];
+    monthlyInventoryActivity: { month: string; label: string; transfers: number; reconciliationVariance: number }[];
     statusBreakdown: { status: string; count: number }[];
     commodityOnHand: { name: string; quantity: number }[];
     depotUtilization: { name: string; onHand: number; capacity: number; utilization: number | null }[];
@@ -95,12 +88,7 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
     const circumference = 2 * Math.PI * 46;
     let offset = 0;
     const maxQuantity = Math.max(...charts.commodityOnHand.map((item) => item.quantity), 0);
-    const activityValues = charts.monthlyInventoryActivity.flatMap((item) => [
-        item.transfers,
-        item.reconciliationVariance,
-        item.weighbridgeInbound,
-        item.weighbridgeOutbound,
-    ]);
+    const activityValues = charts.monthlyInventoryActivity.flatMap((item) => [item.transfers, item.reconciliationVariance]);
     const hasActivity = activityValues.some((value) => value !== 0);
     const activityMin = Math.min(0, ...activityValues);
     const activityMax = Math.max(0, ...activityValues);
@@ -110,8 +98,6 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
     const chartY = (value: number) => plot.top + ((activityMax - value) / activityRange) * (plot.bottom - plot.top);
     const transferPoints = charts.monthlyInventoryActivity.map((item, index) => `${chartX(index)},${chartY(item.transfers)}`).join(' ');
     const variancePoints = charts.monthlyInventoryActivity.map((item, index) => `${chartX(index)},${chartY(item.reconciliationVariance)}`).join(' ');
-    const inboundPoints = charts.monthlyInventoryActivity.map((item, index) => `${chartX(index)},${chartY(item.weighbridgeInbound)}`).join(' ');
-    const outboundPoints = charts.monthlyInventoryActivity.map((item, index) => `${chartX(index)},${chartY(item.weighbridgeOutbound)}`).join(' ');
 
     return (
         <section className="mt-7 grid gap-5 xl:grid-cols-2" aria-label="Inventory analytics">
@@ -240,23 +226,13 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
                         </span>
                         <div>
                             <h2 className="text-sm font-semibold text-[#101828]">Inventory activity trend</h2>
-                            <p className="mt-1 text-xs text-[#667085]">
-                                Recorded depot movements, weighbridge flows and reconciliation variance · last 6 months
-                            </p>
+                            <p className="mt-1 text-xs text-[#667085]">Recorded transfers and reconciliation variance · last 6 months</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
                         <span className="inline-flex items-center gap-2 text-[#475467]">
                             <span className="h-0.5 w-5 rounded-full bg-[#0b6b4f]" />
                             Transferred (MT)
-                        </span>
-                        <span className="inline-flex items-center gap-2 text-[#475467]">
-                            <span className="h-0.5 w-5 rounded-full bg-[#175cd3]" />
-                            Weighbridge inbound (MT)
-                        </span>
-                        <span className="inline-flex items-center gap-2 text-[#475467]">
-                            <span className="h-0.5 w-5 rounded-full bg-[#d92d20]" />
-                            Weighbridge outbound (MT)
                         </span>
                         <span className="inline-flex items-center gap-2 text-[#475467]">
                             <span className="h-0.5 w-5 rounded-full bg-[#f79009]" />
@@ -269,7 +245,7 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
                         viewBox="0 0 800 220"
                         className="h-56 w-full min-w-[620px] overflow-visible"
                         role="img"
-                        aria-label="Line chart of monthly transfers, weighbridge flows and reconciliation variance"
+                        aria-label="Line chart of monthly inventory transfer quantities and reconciliation variance"
                     >
                         {[0, 1, 2, 3, 4].map((tick) => {
                             const value = activityMax - (tick * activityRange) / 4;
@@ -298,22 +274,6 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
                                     points={variancePoints}
                                     fill="none"
                                     stroke="#f79009"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <polyline
-                                    points={inboundPoints}
-                                    fill="none"
-                                    stroke="#175cd3"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <polyline
-                                    points={outboundPoints}
-                                    fill="none"
-                                    stroke="#d92d20"
                                     strokeWidth="3"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -350,26 +310,6 @@ function InventoryInsights({ charts }: { charts: InventoryCharts }) {
                                             strokeWidth="2.5"
                                         >
                                             <title>{`${item.label}: ${item.reconciliationVariance.toLocaleString()} MT reconciliation variance`}</title>
-                                        </circle>
-                                        <circle
-                                            cx={chartX(index)}
-                                            cy={chartY(item.weighbridgeInbound)}
-                                            r="4.5"
-                                            fill="white"
-                                            stroke="#175cd3"
-                                            strokeWidth="2.5"
-                                        >
-                                            <title>{`${item.label}: ${item.weighbridgeInbound.toLocaleString()} MT weighbridge inbound`}</title>
-                                        </circle>
-                                        <circle
-                                            cx={chartX(index)}
-                                            cy={chartY(item.weighbridgeOutbound)}
-                                            r="4.5"
-                                            fill="white"
-                                            stroke="#d92d20"
-                                            strokeWidth="2.5"
-                                        >
-                                            <title>{`${item.label}: ${item.weighbridgeOutbound.toLocaleString()} MT weighbridge outbound`}</title>
                                         </circle>
                                     </>
                                 )}
