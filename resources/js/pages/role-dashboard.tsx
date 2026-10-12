@@ -5,9 +5,26 @@ import WorkspaceSidebar from '@/components/workspace-sidebar';
 import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
-type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy';
+type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy' | 'field_operations';
 
 const dashboardContent: Record<Role, { title: string; description: string; metrics: string[]; panels: string[] }> = {
+    field_operations: {
+        title: 'Field Operations Dashboard',
+        description:
+            'Coordinate field visits, verify farmer and farm information, monitor fertilizer deliveries, and track field issues.',
+        metrics: [
+            "Today's Field Visits",
+            'Pending Farm Verification',
+            'Deliveries to Confirm',
+            'Open Field Issues',
+        ],
+        panels: [
+            'Upcoming Field Visits',
+            'Farmer Verification Activity',
+            'Delivery and Field Issue Monitoring',
+        ],
+    },
+        
     subsidy: {
         title: 'Farmer management dashboard',
         description:
@@ -63,7 +80,15 @@ function EmptyPanel({ title, icon: Icon }: { title: string; icon: typeof Databas
     );
 }
 
-export default function RoleDashboard({ role }: { role: Role }) {
+export default function RoleDashboard({
+    role,
+    metrics = {},
+}: {
+    role: Role;
+    metrics?: {
+        pendingFarmVerification?: number;
+    };
+}) { 
     const { auth } = usePage<SharedData>().props;
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
     const content = dashboardContent[role];
@@ -129,6 +154,13 @@ export default function RoleDashboard({ role }: { role: Role }) {
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             {content.metrics.map((label, index) => {
                                 const Icon = metricIcons[index];
+                                const isPendingVerification =
+                                role === 'field_operations' &&
+                                label === 'Pending Farm Verification';
+
+                            const metricValue = isPendingVerification
+                                ? (metrics.pendingFarmVerification ?? 0)
+                                : undefined;
                                 return (
                                     <div
                                         key={label}
@@ -140,8 +172,23 @@ export default function RoleDashboard({ role }: { role: Role }) {
                                                 <Icon className="size-4" />
                                             </span>
                                         </div>
-                                        <div className="mt-5 h-7 w-24 animate-pulse rounded bg-[#eef2f6]" />
-                                        <p className="mt-3 text-xs text-[#98a2b3]">Awaiting data connection</p>
+                                       {metricValue !== undefined ? (
+                                        <>
+                                            <div className="mt-5 text-3xl font-semibold text-[#176b45]">
+                                                {metricValue.toLocaleString()}
+                                            </div>
+                                            <p className="mt-3 text-xs text-[#667085]">
+                                                Farmers awaiting verification
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="mt-5 h-7 w-24 animate-pulse rounded bg-[#eef2f6]" />
+                                            <p className="mt-3 text-xs text-[#98a2b3]">
+                                                Awaiting data connection
+                                            </p>
+                                        </>
+                                    )}
                                     </div>
                                 );
                             })}

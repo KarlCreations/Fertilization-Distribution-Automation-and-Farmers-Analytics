@@ -1,28 +1,83 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, LogOut, Package, Settings, Sprout, Truck, UserCog, UsersRound, WalletCards } from 'lucide-react';
-
+import {
+    ClipboardCheck,
+    ClipboardList,
+    LayoutDashboard,
+    LogOut,
+    Package,
+    Settings,
+    Sprout,
+    Truck,
+    UserCog,
+    UsersRound,
+    WalletCards,
+} from 'lucide-react';
 import { type SharedData } from '@/types';
 
 const workspaceLinks = [
-    { label: 'Overview', icon: LayoutDashboard, routeName: 'dashboard', roles: ['executive', 'admin', 'operations_director'] },
     {
-        label: 'Farmer management',
-        icon: Sprout,
-        routeName: 'farmer-management-dashboard',
-        roles: ['subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff'],
+        label: 'Overview',
+        icon: LayoutDashboard,
+        routeName: 'dashboard',
+        roles: ['executive', 'admin', 'operations_director'],
     },
-    { label: 'My inventory dashboard', icon: Package, routeName: 'inventory-dashboard', roles: ['inventory', 'inventory_staff'] },
-    { label: 'My sales dashboard', icon: Truck, routeName: 'sales-dashboard', roles: ['sales', 'sales_staff'] },
-    { label: 'My finance dashboard', icon: WalletCards, routeName: 'finance-dashboard', roles: ['finance', 'finance_staff'] },
-    { label: 'My HR dashboard', icon: UsersRound, routeName: 'hr-dashboard', roles: ['hr', 'hr_employee'] },
+
+    // SUBSIDY
     {
-        label: 'Farmer registry',
+        label: 'Subsidy Dashboard',
         icon: Sprout,
+        routeName: 'subsidy-dashboard',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+    {
+        label: 'Farmer Management',
+        icon: UsersRound,
         routeName: 'farmer-registry',
-        roles: ['executive', 'admin', 'operations_director', 'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff'],
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+ 
+    {
+    label: 'Subsidy Allocations',
+    icon: ClipboardList,
+    routeName: 'subsidy-allocations',
+    roles: ['subsidy', 'subsidy_staff'],
+    },
+
+    
+    //disbursement
+    {
+        label: 'Disbursement Records',
+        icon: ClipboardList,
+        routeName: 'disbursement-records',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+
+    //field operations
+    {
+        label: 'Field Activities',
+        icon: ClipboardCheck,
+        routeName: 'field-activities.index',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+
+
+    // OPERATIONS
+    {
+        label: 'Operations Dashboard',
+        icon: Truck,
+        routeName: 'operations-dashboard',
+        roles: ['field_operations', 'field_operations_staff'],
+    },
+
+    // INVENTORY
+    {
+        label: 'My Inventory Dashboard',
+        icon: Package,
+        routeName: 'inventory-dashboard',
+        roles: ['inventory', 'inventory_staff'],
     },
     {
-        label: 'Inventory & condition',
+        label: 'Inventory & Condition',
         icon: Package,
         routeName: 'inventory-warehouses',
         roles: [
@@ -31,31 +86,86 @@ const workspaceLinks = [
             'operations_director',
             'inventory',
             'inventory_staff',
-            'subsidy',
-            'subsidy_staff',
-            'field_operations',
-            'field_operations_staff',
+        ],
+    },
+
+    // SALES
+    {
+        label: 'My Sales Dashboard',
+        icon: Truck,
+        routeName: 'sales-dashboard',
+        roles: ['sales', 'sales_staff'],
+    },
+    {
+        label: 'Trade Hub',
+        icon: Truck,
+        routeName: 'sales-commodities',
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
             'sales',
             'sales_staff',
         ],
     },
-    { label: 'Trade hub', icon: Truck, routeName: 'sales-commodities', roles: ['executive', 'admin', 'operations_director', 'sales', 'sales_staff'] },
+
+    // FINANCE
+    {
+        label: 'My Finance Dashboard',
+        icon: WalletCards,
+        routeName: 'finance-dashboard',
+        roles: ['finance', 'finance_staff'],
+    },
     {
         label: 'Financials',
         icon: WalletCards,
         routeName: 'finance-impact',
-        roles: ['executive', 'admin', 'operations_director', 'finance', 'finance_staff'],
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
+            'finance',
+            'finance_staff',
+        ],
+    },
+
+    // HR
+    {
+        label: 'My HR Dashboard',
+        icon: UsersRound,
+        routeName: 'hr-dashboard',
+        roles: ['hr', 'hr_employee'],
     },
     {
-        label: 'HR & workforce',
+        label: 'HR & Workforce',
         icon: UsersRound,
         routeName: 'hr-workforce',
-        roles: ['executive', 'admin', 'operations_director', 'hr', 'hr_employee'],
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
+            'hr',
+            'hr_employee',
+        ],
     },
-    { label: 'System administration', icon: UserCog, routeName: 'system-admin', roles: ['executive', 'admin', 'operations_director'] },
-    { label: 'System settings', icon: Settings, routeName: 'system-settings', roles: ['executive', 'admin', 'operations_director'] },
+
+    // ADMIN
     {
-        label: 'My settings',
+        label: 'System Administration',
+        icon: UserCog,
+        routeName: 'system-admin',
+        roles: ['executive', 'admin', 'operations_director'],
+    },
+    {
+        label: 'System Settings',
+        icon: Settings,
+        routeName: 'system-settings',
+        roles: ['executive', 'admin', 'operations_director'],
+    },
+
+    // PERSONAL SETTINGS
+    {
+        label: 'My Settings',
         icon: Settings,
         routeName: 'employee-settings',
         roles: [
@@ -80,7 +190,7 @@ export default function WorkspaceSidebar() {
     const visibleLinks = workspaceLinks.filter(({ roles }) => roles.includes(String(auth.user.role)));
 
     return (
-        <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
+        <aside className="hidden h-screen w-64 shrink-0 overflow-y-auto border-r border-[#dce8df] bg-white p-3 lg:block">
             <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
             <nav className="grid gap-1" aria-label="Primary navigation">
                 {visibleLinks.map(({ label, icon: Icon, routeName }) => {
@@ -114,3 +224,4 @@ export default function WorkspaceSidebar() {
         </aside>
     );
 }
+
