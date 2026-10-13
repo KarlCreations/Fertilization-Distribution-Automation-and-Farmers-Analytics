@@ -29,3 +29,4 @@ class VerifyEmailController extends Controller
         return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
     }
 }
+// This is a comment that won't affect the code

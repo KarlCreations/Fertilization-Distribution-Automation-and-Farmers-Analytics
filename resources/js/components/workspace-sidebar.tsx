@@ -78,6 +78,7 @@ const workspaceLinks = [
 export default function WorkspaceSidebar() {
     const { auth } = usePage<SharedData>().props;
     const visibleLinks = workspaceLinks.filter(({ roles }) => roles.includes(String(auth.user.role)));
+    const isFinanceUser = ['finance', 'finance_staff'].includes(String(auth.user.role));
 
     return (
         <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
@@ -85,6 +86,7 @@ export default function WorkspaceSidebar() {
             <nav className="grid gap-1" aria-label="Primary navigation">
                 {visibleLinks.map(({ label, icon: Icon, routeName }) => {
                     const active = route().current(routeName);
+                    const linkLabel = routeName === 'employee-settings' && isFinanceUser ? 'Settings' : label;
 
                     return (
                         <Link
@@ -95,7 +97,7 @@ export default function WorkspaceSidebar() {
                             }`}
                         >
                             <Icon className="size-4" />
-                            {label}
+                            {linkLabel}
                         </Link>
                     );
                 })}

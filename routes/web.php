@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\FinanceDisbursementController;
+use App\Http\Controllers\FinanceSettingsController;
+use App\Services\FinanceDashboardData;
 use App\Services\PowerBiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -46,9 +49,15 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'subsidy']);
     })->middleware('role:subsidy,subsidy_staff,field_operations,field_operations_staff')->name('farmer-management-dashboard');
 
-    Route::get('employee-settings', function () {
-        return Inertia::render('employee-settings');
-    })->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')->name('employee-settings');
+    Route::get('employee-settings', [FinanceSettingsController::class, 'edit'])
+        ->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')
+        ->name('employee-settings');
+    Route::patch('finance-settings/notifications', [FinanceSettingsController::class, 'update'])
+        ->middleware('role:finance,finance_staff')
+        ->name('finance-settings.update');
+    Route::post('finance-settings/avatar', [FinanceSettingsController::class, 'updateAvatar'])
+        ->middleware('role:finance,finance_staff')
+        ->name('finance-settings.avatar');
 
     Route::get('inventory-dashboard', function () {
         return Inertia::render('role-dashboard', ['role' => 'inventory']);
@@ -58,8 +67,11 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'sales']);
     })->middleware('role:sales,sales_staff')->name('sales-dashboard');
 
-    Route::get('finance-dashboard', function () {
-        return Inertia::render('role-dashboard', ['role' => 'finance']);
+    Route::get('finance-dashboard', function (FinanceDashboardData $financeData) {
+        return Inertia::render('role-dashboard', [
+            'role' => 'finance',
+            'financeData' => $financeData->snapshot(),
+        ]);
     })->middleware('role:finance,finance_staff')->name('finance-dashboard');
 
     Route::get('hr-dashboard', function () {
@@ -96,9 +108,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('inventory-warehouses');
     })->middleware('role:executive,admin,operations_director,inventory,inventory_staff,subsidy,subsidy_staff,field_operations,field_operations_staff,sales,sales_staff')->name('inventory-warehouses');
 
-    Route::get('finance-impact', function () {
-        return Inertia::render('finance-impact');
+    Route::get('finance-impact', function (FinanceDashboardData $financeData) {
+        return Inertia::render('finance-impact', $financeData->snapshot());
     })->middleware('role:executive,admin,operations_director,finance,finance_staff')->name('finance-impact');
+
+    Route::post('finance-impact/quotas/{quotaId}/disbursements', [FinanceDisbursementController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,finance,finance_staff')
+        ->name('finance-disbursements.store');
 
     Route::get('sales-commodities', function () {
         return Inertia::render('sales-commodities');
