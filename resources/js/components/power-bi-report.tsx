@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { models, Report } from 'powerbi-client';
+import { models, Report, service } from 'powerbi-client';
 import { PowerBIEmbed } from 'powerbi-client-react';
 
 export default function PowerBiReport({ title = 'Power BI report' }: { title?: string }) {
@@ -24,7 +24,6 @@ export default function PowerBiReport({ title = 'Power BI report' }: { title?: s
                     accessToken: data.accessToken,
                     tokenType: models.TokenType.Embed,
                     permissions: models.Permissions.Read,
-                    pageView: 'fitToWidth',
                     settings: { panes: { filters: { visible: false } } },
                 });
             })
@@ -42,7 +41,7 @@ export default function PowerBiReport({ title = 'Power BI report' }: { title?: s
                 embedConfig={config}
                 eventHandlers={new Map([
                     ['loaded', () => setMessage('')],
-                    ['error', (event) => setMessage(event?.detail?.message || 'Power BI report failed to load.')],
+                    ['error', (event?: service.ICustomEvent<models.IError>) => setMessage(event?.detail?.message || 'Power BI report failed to load.')],
                 ])}
                 getEmbeddedComponent={(embeddedReport) => {
                     reportRef.current = embeddedReport as Report;
