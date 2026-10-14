@@ -10,30 +10,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
-interface LoginForm {
+interface LoginForm extends Record<string, string | boolean> {
     email: string;
     password: string;
     remember: boolean;
+    [key: string]: string | boolean;
+}
+
+interface DemoAccount {
+    label: string;
+    email: string;
+    password: string;
 }
 
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
+    demoAccounts?: DemoAccount[];
 }
 
-const developmentAccounts = import.meta.env.DEV
-    ? [
-          { label: 'Executive overview', email: 'test@example.com', password: 'password' },
-          { label: 'Inventory staff', email: 'inventory.staff@example.com', password: 'Inventory@12345' },
-          { label: 'Sales staff', email: 'sales.staff@example.com', password: 'Sales@12345' },
-          { label: 'Finance staff', email: 'finance.staff@example.com', password: 'Finance@12345' },
-          { label: 'HR employee', email: 'hr.employee@example.com', password: 'Hr@12345' },
-          { label: 'Subsidy staff', email: 'subsidy.staff@example.com', password: 'Subsidy@12345' },
-          { label: 'Field operations', email: 'field.operations@example.com', password: 'FieldOps@12345' },
-      ]
-    : [];
-
-export default function Login({ status, canResetPassword }: LoginProps) {
+export default function Login({ status, canResetPassword, demoAccounts = [] }: LoginProps) {
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         email: '',
         password: '',
@@ -153,23 +149,25 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                 </div>
             </form>
 
-            <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                <p className="text-xs font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Development quick access</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {developmentAccounts.map((account) => (
-                        <button
-                            key={account.email}
-                            type="button"
-                            disabled={processing}
-                            onClick={() => signInAs(account.email, account.password)}
-                            className="flex h-9 items-center justify-between rounded-md border border-[#d0d5dd] bg-white px-3 text-left text-xs font-medium text-[#475467] hover:border-[#175cd3] hover:text-[#175cd3] disabled:opacity-50"
-                        >
-                            {account.label}
-                            <ArrowRight className="size-3.5" />
-                        </button>
-                    ))}
+            {demoAccounts.length > 0 && (
+                <div className="mt-7 border-t border-[#eaecf0] pt-5">
+                    <p className="text-xs font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Development quick access</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {demoAccounts.map((account) => (
+                            <button
+                                key={account.email}
+                                type="button"
+                                disabled={processing}
+                                onClick={() => signInAs(account.email, account.password)}
+                                className="flex h-9 items-center justify-between rounded-md border border-[#d0d5dd] bg-white px-3 text-left text-xs font-medium text-[#475467] hover:border-[#175cd3] hover:text-[#175cd3] disabled:opacity-50"
+                            >
+                                {account.label}
+                                <ArrowRight className="size-3.5" />
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {status && <div className="mt-5 text-center text-sm font-medium text-[#0b6b4f]">{status}</div>}
         </AuthLayout>

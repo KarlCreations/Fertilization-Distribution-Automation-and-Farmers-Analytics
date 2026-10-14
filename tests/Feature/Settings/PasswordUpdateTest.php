@@ -22,6 +22,25 @@ test('password can be updated', function () {
     expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
 });
 
+test('password can be changed from the employee settings dialog', function () {
+    $user = User::factory()->create(['role' => 'inventory']);
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('employee-settings'))
+        ->put(route('password.update'), [
+            'current_password' => 'password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('employee-settings'));
+
+    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+});
+
 test('correct password must be provided to update password', function () {
     $user = User::factory()->create();
 
