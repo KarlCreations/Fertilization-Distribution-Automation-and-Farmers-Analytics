@@ -1,23 +1,16 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Bell,
     CalendarClock,
     ChevronDown,
     CircleHelp,
-    ClipboardList,
-    LayoutDashboard,
     Leaf,
-    LogOut,
     MapPinned,
     Menu,
     Plus,
     Search,
-    Settings,
     ShieldCheck,
-    Sprout,
     UsersRound,
-    WalletCards,
-    Warehouse,
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
@@ -90,94 +83,6 @@ function EmptyState({ title, description, className = '' }: { title: string; des
         </div>
     );
 }
-
-function Navigation() {
-    return (
-        <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
-            <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
-            <nav className="grid gap-1" aria-label="Primary navigation">
-                <Link
-                    href={route('dashboard')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <LayoutDashboard className="size-4" />
-                    Overview
-                </Link>
-                <Link
-                    href={route('farmer-registry')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <Sprout className="size-4" />
-                    Farmer registry
-                </Link>
-                <Link
-                    href={route('inventory-warehouses')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <Warehouse className="size-4" />
-                    Inventory
-                </Link>
-                <Link
-                    href={route('sales-commodities')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <ClipboardList className="size-4" />
-                    Trade hub
-                </Link>
-                <Link
-                    href={route('finance-impact')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <WalletCards className="size-4" />
-                    Financials
-                </Link>
-                <Link
-                    href={route('hr-workforce')}
-                    className="flex h-10 items-center gap-3 rounded-md bg-[#eff4ff] px-3 text-sm font-medium text-[#175cd3]"
-                >
-                    <UsersRound className="size-4" />
-                    HR & workforce
-                </Link>
-                <Link
-                    href={route('system-admin')}
-                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <Settings className="size-4" />
-                    System administration
-                </Link>
-            </nav>
-            <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                <Link
-                    href={route('system-settings')}
-                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <Settings className="size-4" />
-                    System settings
-                </Link>
-                <Link
-                    href={route('logout')}
-                    method="post"
-                    as="button"
-                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <LogOut className="size-4" />
-                    Sign out
-                </Link>
-            </div>
-        </aside>
-    );
-}
-
-type Employee = {
-    employee_code: string;
-    department: string | null;
-    position: string | null;
-    is_active: boolean;
-    name: string;
-    email: string;
-    zone_name: string | null;
-    depot_name: string | null;
-};
 
 export default function HrWorkforce({ workforceMetrics, employees }: { workforceMetrics: Record<string, number>; employees: Employee[] }) {
     const { auth } = usePage<SharedData>().props;

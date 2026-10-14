@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Bell,
     CheckCircle2,
@@ -8,9 +8,7 @@ import {
     Database,
     Download,
     FileKey2,
-    LayoutDashboard,
     Leaf,
-    LogOut,
     Menu,
     Package,
     Save,
@@ -24,7 +22,6 @@ import {
     UserCog,
     UsersRound,
     Vault,
-    WalletCards,
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
@@ -80,50 +77,6 @@ function EmptyState({ title, description, className = '' }: { title: string; des
             <p className="mt-3 text-sm font-medium text-[#475467]">{title}</p>
             <p className="mt-1 max-w-sm text-xs leading-5 text-[#98a2b3]">{description}</p>
         </div>
-    );
-}
-
-function Navigation() {
-    const links = [
-        { label: 'Overview', icon: LayoutDashboard, href: route('dashboard') },
-        { label: 'Farmer registry', icon: Sprout, href: route('farmer-registry') },
-        { label: 'Inventory', icon: Package, href: route('inventory-warehouses') },
-        { label: 'Trade hub', icon: Truck, href: route('sales-commodities') },
-        { label: 'Financials', icon: WalletCards, href: route('finance-impact') },
-        { label: 'HR & workforce', icon: UsersRound, href: route('hr-workforce') },
-        { label: 'System administration', icon: UserCog, href: route('system-admin') },
-        { label: 'System settings', icon: Settings, href: route('system-settings'), active: true },
-    ];
-
-    return (
-        <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
-            <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
-            <nav className="grid gap-1" aria-label="Primary navigation">
-                {links.map(({ label, icon: Icon, href, active }) => (
-                    <Link
-                        key={label}
-                        href={href}
-                        className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium ${
-                            active ? 'bg-[#eff4ff] text-[#175cd3]' : 'text-[#475467] hover:bg-[#f9fafb]'
-                        }`}
-                    >
-                        <Icon className="size-4" />
-                        {label}
-                    </Link>
-                ))}
-            </nav>
-            <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                <Link
-                    href={route('logout')}
-                    method="post"
-                    as="button"
-                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                >
-                    <LogOut className="size-4" />
-                    Sign out
-                </Link>
-            </div>
-        </aside>
     );
 }
 
