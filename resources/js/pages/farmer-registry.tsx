@@ -1,0 +1,169 @@
+import { Head, usePage } from '@inertiajs/react';
+import { CheckCircle2, ClipboardList, Leaf, Search, ShieldCheck, UsersRound } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import CrudManager from '@/components/crud-manager';
+import WorkspaceHeader from '@/components/workspace-header';
+import WorkspaceSidebar from '@/components/workspace-sidebar';
+import { type SharedData } from '@/types';
+
+type Farmer = {
+    id: number;
+    national_id: string;
+    full_name: string;
+    phone: string | null;
+    zone_id: number | null;
+    status: string;
+    biometric_verified: boolean;
+    zone_name: string | null;
+};
+
+type Quota = {
+    id: number;
+    farmer_id: number;
+    cycle_id: number;
+    commodity_id: number;
+    farmer_name: string;
+    national_id: string;
+    commodity_name: string;
+    cycle_name: string;
+    allocated_qty: number;
+    disbursed_qty: number;
+};
+
+type RegistryProps = SharedData & {
+    registryMetrics: {
+        registeredFarmers: number;
+        quotaDisbursed: number;
+        activeQuotaRecords: number;
+        quotaAllocated: number;
+    };
+    farmers: Farmer[];
+    zones: { id: number; name: string }[];
+    quotaFarmers: { id: number; full_name: string; national_id: string }[];
+    quotaCommodities: { id: number; name: string; grade: string | null }[];
+    subsidyCycles: { id: number; name: string }[];
+    quotaLedger: Quota[];
+};
+
+type CrudRecord = Record<string, string | number | boolean | null> & { id: number };
+
+function MetricCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof UsersRound }) {
+    return (
+        <article className="rounded-xl border border-[#e0ebe3] bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold tracking-wider text-[#607b68] uppercase">{label}</p>
+                    <p className="mt-3 text-2xl font-bold text-[#173d2b]">{value}</p>
+                </div>
+                <span className="flex size-10 items-center justify-center rounded-xl bg-[#e8f5ec] text-[#176b45]"><Icon className="size-5" /></span>
+            </div>
+        </article>
+    );
+}
+
+export default function FarmerRegistry({ registryMetrics, farmers, zones, quotaFarmers, quotaCommodities, subsidyCycles, quotaLedger }: RegistryProps) {
+    const { auth } = usePage<SharedData>().props;
+    const [search, setSearch] = useState('');
+    const [status, setStatus] = useState('all');
+    const [zone, setZone] = useState('all');
+
+    const filteredFarmers = useMemo(() => {
+        const term = search.trim().toLowerCase();
+
+        return farmers.filter((farmer) => {
+            const matchesSearch = !term || `${farmer.full_name} ${farmer.national_id} ${farmer.phone ?? ''}`.toLowerCase().includes(term);
+            const matchesStatus = status === 'all' || farmer.status === status;
+            const matchesZone = zone === 'all' || String(farmer.zone_id ?? '') === zone;
+
+            return matchesSearch && matchesStatus && matchesZone;
+        });
+    }, [farmers, search, status, zone]);
+
+    const farmerRecords = filteredFarmers as unknown as CrudRecord[];
+    const quotaRecords = quotaLedger as unknown as CrudRecord[];
+
+    return (
+        <>
+            <Head title="Farmer Management" />
+            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <WorkspaceHeader />
+                <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+                    <WorkspaceSidebar />
+                    <main className="min-w-0 p-4 sm:p-6 lg:p-8">
+                        <div className="mb-7 flex items-center gap-3">
+                            <span className="flex size-11 items-center justify-center rounded-xl bg-[#176b45] text-white"><Leaf className="size-5" /></span>
+                            <div>
+                                <p className="text-xs font-semibold tracking-wide text-[#176b45] uppercase">Subsidy workspace</p>
+                                <h1 className="text-2xl font-bold text-[#173d2b] sm:text-3xl">Farmer Management</h1>
+                                <p className="mt-1 text-sm text-[#718176]">Register, verify, and manage farmer records for subsidy distribution.</p>
+                            </div>
+                        </div>
+
+                        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            <MetricCard label="Registered farmers" value={registryMetrics.registeredFarmers.toLocaleString()} icon={UsersRound} />
+                            <MetricCard label="Fertilizer disbursed" value={`${registryMetrics.quotaDisbursed.toLocaleString()} MT`} icon={CheckCircle2} />
+                            <MetricCard label="Active quota records" value={registryMetrics.activeQuotaRecords.toLocaleString()} icon={ClipboardList} />
+                            <MetricCard label="Allocated fertilizer" value={`${registryMetrics.quotaAllocated.toLocaleString()} MT`} icon={ShieldCheck} />
+                        </section>
+
+                        <section className="mt-6 rounded-xl border border-[#e0ebe3] bg-white p-4 shadow-sm">
+                            <div className="flex flex-col gap-3 md:flex-row">
+                                <label className="relative min-w-0 flex-1">
+                                    <span className="sr-only">Search farmers</span>
+                                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a99d]" />
+                                    <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, national ID, or phone" className="h-10 w-full rounded-md border border-[#d0d5dd] bg-white pr-3 pl-9 text-sm outline-none focus:border-[#176b45]" />
+                                </label>
+                                <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm">
+                                    <option value="all">All statuses</option>
+                                    <option value="pending_verification">Pending verification</option>
+                                    <option value="verified">Verified</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                                <select value={zone} onChange={(event) => setZone(event.target.value)} className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm">
+                                    <option value="all">All zones</option>
+                                    {zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                                </select>
+                            </div>
+                        </section>
+
+                        <CrudManager
+                            id="farmer-crud"
+                            title="Farmer"
+                            records={farmerRecords}
+                            totalRecordCount={farmers.length}
+                            emptyMessage="No farmers match the current filters."
+                            createUrl={route('farmers.store')}
+                            updateUrl={(id) => route('farmers.update', { farmer: id })}
+                            deleteUrl={(id) => route('farmers.destroy', { farmer: id })}
+                            fields={[
+                                { name: 'national_id', label: 'National ID', required: true },
+                                { name: 'full_name', label: 'Full name', required: true },
+                                { name: 'phone', label: 'Phone number' },
+                                { name: 'zone_id', label: 'Service zone', type: 'select', options: zones.map((item) => ({ label: item.name, value: item.id })), displayName: 'zone_name' },
+                                { name: 'status', label: 'Status', type: 'select', required: true, options: [{ label: 'Pending verification', value: 'pending_verification' }, { label: 'Verified', value: 'verified' }, { label: 'Suspended', value: 'suspended' }] },
+                                { name: 'biometric_verified', label: 'Biometric verified', type: 'checkbox' },
+                            ]}
+                        />
+
+                        <CrudManager
+                            id="quota-crud"
+                            title="Farmer quota"
+                            records={quotaRecords}
+                            createUrl={route('farmer-quotas.store')}
+                            updateUrl={(id) => route('farmer-quotas.update', { farmerQuota: id })}
+                            deleteUrl={(id) => route('farmer-quotas.destroy', { farmerQuota: id })}
+                            fields={[
+                                { name: 'farmer_id', label: 'Farmer', type: 'select', required: true, displayName: 'farmer_name', options: quotaFarmers.map((item) => ({ label: `${item.full_name} · ${item.national_id}`, value: item.id })) },
+                                { name: 'cycle_id', label: 'Subsidy cycle', type: 'select', required: true, displayName: 'cycle_name', options: subsidyCycles.map((item) => ({ label: item.name, value: item.id })) },
+                                { name: 'commodity_id', label: 'Commodity', type: 'select', required: true, displayName: 'commodity_name', options: quotaCommodities.map((item) => ({ label: item.grade ? `${item.name} · ${item.grade}` : item.name, value: item.id })) },
+                                { name: 'allocated_qty', label: 'Allocated quantity (MT)', type: 'number', required: true },
+                                { name: 'disbursed_qty', label: 'Disbursed quantity (MT)', type: 'number', required: true },
+                            ]}
+                        />
+                    </main>
+                </div>
+            </div>
+        </>
+    );
+}
