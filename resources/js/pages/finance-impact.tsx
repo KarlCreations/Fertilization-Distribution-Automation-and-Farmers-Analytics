@@ -2,7 +2,6 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BadgeDollarSign,
     BarChart3,
-    Bell,
     BookOpenCheck,
     BriefcaseBusiness,
     ChartNoAxesCombined,
@@ -15,6 +14,7 @@ import {
     Leaf,
     LogOut,
     Menu,
+    Play,
     Plus,
     ReceiptText,
     Search,
@@ -199,6 +199,9 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
 
 export default function FinanceImpact({ metrics, quotaLedger, tradeContracts, financeAuditEvents }: FinanceImpactProps) {
     const { auth } = usePage<SharedData>().props;
+    const [financeSearch, setFinanceSearch] = useState('');
+    const [financeContractType, setFinanceContractType] = useState('all');
+    const [financeStatus, setFinanceStatus] = useState('all');
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
     const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -308,15 +311,7 @@ export default function FinanceImpact({ metrics, quotaLedger, tradeContracts, fi
             <Head title="Finance & impact" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        aria-expanded={isMobileNavigationOpen}
-                        onClick={() => setIsMobileNavigationOpen((isOpen) => !isOpen)}
-                        className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] text-[#475467] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
+                    <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
                             <Leaf className="size-4" />
@@ -330,35 +325,14 @@ export default function FinanceImpact({ metrics, quotaLedger, tradeContracts, fi
                             value={searchTerm}
                             onChange={(event) => setSearchTerm(event.target.value)}
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
-                            placeholder="Search quotas, contracts, farmers, or counterparties"
+                            placeholder="Search ledger, settlement, or counterparty"
+                            value={financeSearch}
+                            onChange={(event) => setFinanceSearch(event.target.value)}
                         />
                     </label>
                     <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            onClick={() =>
-                                setNotice(
-                                    `${financeAuditEvents.length} finance audit event(s) are recorded. ${tradeContracts.filter((contract) => contract.status.toLowerCase() === 'draft').length} trade contract(s) are currently drafts.`,
-                                )
-                            }
-                            className="relative flex size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7]"
-                        >
-                            <Bell className="size-4" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#d92d20]" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            onClick={() =>
-                                setNotice(
-                                    'Figures come from ERP trade contracts and fertilizer quota records. Trade value has no currency assigned in the source data.',
-                                )
-                            }
-                            className="hidden size-9 items-center justify-center rounded-md text-[#475467] hover:bg-[#f2f4f7] sm:flex"
-                        >
-                            <CircleHelp className="size-4" />
-                        </button>
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
                         <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>

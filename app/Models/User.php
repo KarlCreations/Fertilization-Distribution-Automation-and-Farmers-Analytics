@@ -25,6 +25,8 @@ class User extends Authenticatable
         'email',
         'role',
         'password',
+        'preferences',
+        'profile_photo_path',
     ];
 
     /**
@@ -38,6 +40,28 @@ class User extends Authenticatable
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'avatar',
+    ];
+
+    /**
+     * Get the user's profile photo URL, if one has been uploaded.
+     *
+     * The URL is relative to the application root so it resolves against the
+     * host and port the app is actually served from.
+     */
+    protected function avatar(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->profile_photo_path
+            ? '/storage/'.$this->profile_photo_path
+            : null);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -46,6 +70,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'password_changed_at' => 'datetime',
             'password' => 'hashed',
             'finance_notification_preferences' => 'array',
         ];
@@ -54,5 +80,17 @@ class User extends Authenticatable
     protected function avatar(): Attribute
     {
         return Attribute::get(fn (?string $value): ?string => $value === null ? null : Storage::disk('public')->url($value));
+            'preferences' => 'array',
+        ];
+    }
+
+    public function canAccessSales(): bool
+    {
+        return $this->hasSalesAdministrationAccess() || in_array($this->role, ['sales', 'sales_staff'], true);
+    }
+
+    public function hasSalesAdministrationAccess(): bool
+    {
+        return in_array($this->role, ['executive', 'admin', 'operations_director'], true);
     }
 }

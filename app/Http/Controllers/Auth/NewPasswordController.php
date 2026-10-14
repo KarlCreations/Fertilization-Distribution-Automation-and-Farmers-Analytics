@@ -46,10 +46,16 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user) use ($request) {
-                $user->forceFill([
+                $passwordAttributes = [
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
-                ])->save();
+                ];
+
+                if (in_array($user->role, ['hr', 'hr_employee'], true)) {
+                    $passwordAttributes['password_changed_at'] = now();
+                }
+
+                $user->forceFill($passwordAttributes)->save();
 
                 event(new PasswordReset($user));
             }

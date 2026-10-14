@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\WorkspaceNotificationFeed;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -45,6 +46,11 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $user === null ? null : [...$user->toArray(), 'avatar' => $user->avatar],
+            ],
+            'notifications' => fn (): array => app(WorkspaceNotificationFeed::class)->forUser($request->user()),
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
             ],
         ]);
     }
