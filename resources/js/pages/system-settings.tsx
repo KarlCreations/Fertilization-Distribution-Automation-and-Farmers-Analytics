@@ -6,7 +6,6 @@ import {
     Database,
     Download,
     FileKey2,
-    LayoutDashboard,
     Leaf,
     LogOut,
     Package,
@@ -19,7 +18,6 @@ import {
     UserCog,
     UsersRound,
     Vault,
-    WalletCards,
 } from 'lucide-react';
 
 import WorkspaceNotifications from '@/components/workspace-notifications';

@@ -9,13 +9,11 @@ import {
     FileDown,
     FileText,
     Landmark,
-    LayoutDashboard,
     Leaf,
     LogOut,
     Plus,
     ReceiptText,
     Search,
-    Settings,
     ShieldCheck,
     WalletCards,
 } from 'lucide-react';

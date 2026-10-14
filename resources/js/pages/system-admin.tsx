@@ -1,25 +1,19 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     ClipboardList,
     Download,
     Fingerprint,
     KeyRound,
-    LayoutDashboard,
     Leaf,
-    LogOut,
     MapPinned,
     Network,
     Plus,
     Search,
-    Settings,
     ShieldCheck,
     SlidersHorizontal,
-    Sprout,
     UserCog,
     UsersRound,
     Vault,
-    WalletCards,
-    Warehouse,
 } from 'lucide-react';
 import { useState } from 'react';
 

@@ -1,22 +1,17 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Building2,
     ChartNoAxesCombined,
     FileCheck2,
     Landmark,
-    LayoutDashboard,
     Leaf,
     LogOut,
     Package,
     Plus,
     Search,
-    Settings,
     ShieldCheck,
     Sparkles,
-    Sprout,
     Truck,
-    UsersRound,
-    WalletCards,
 } from 'lucide-react';
 import { useState } from 'react';
 
