@@ -4,6 +4,7 @@ use App\Models\User;
 use Database\Seeders\ErpSampleDataSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('shows live SQLite data on the farmer management dashboard', function () {
@@ -549,6 +550,18 @@ it('exports system configuration and security audit data for administrators', fu
 
     $this->get(route('system-settings.export'))->assertDownload('system-configuration.json');
     $this->get(route('system-admin.audit-export'))->assertDownload('security-audit.csv');
+});
+
+it('gracefully handles a missing notification reads table while the dashboard is loading', function () {
+    $this->seed(ErpSampleDataSeeder::class);
+    $this->actingAs(User::factory()->create(['role' => 'inventory']));
+
+    Schema::dropIfExists('erp_notification_reads');
+
+    $this->get(route('inventory-dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('notifications.unreadCount', 0)
+            ->has('notifications.items', 0));
 });
 
 it('shares relevant unread activity notifications with the authorized workspace dashboard and persists read state per user', function () {

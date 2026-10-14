@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class WorkspaceNotificationFeed
@@ -17,7 +18,7 @@ class WorkspaceNotificationFeed
      */
     public function forUser(?User $user): array
     {
-        if ($user === null) {
+        if ($user === null || ! $this->notificationReadsTableExists()) {
             return ['unreadCount' => 0, 'items' => []];
         }
 
@@ -60,6 +61,10 @@ class WorkspaceNotificationFeed
 
     public function markRead(User $user, int $eventId): void
     {
+        if (! $this->notificationReadsTableExists()) {
+            throw new NotFoundHttpException;
+        }
+
         $event = $this->visibleEvents($user)->where('erp_audit_events.id', $eventId)->first();
 
         if ($event === null) {
@@ -75,6 +80,10 @@ class WorkspaceNotificationFeed
 
     public function markAllRead(User $user): void
     {
+        if (! $this->notificationReadsTableExists()) {
+            return;
+        }
+
         $readAt = now();
 
         $this->visibleEvents($user)
@@ -88,6 +97,11 @@ class WorkspaceNotificationFeed
                     ])->all(),
                 );
             }, 'erp_audit_events.id', 'id');
+    }
+
+    private function notificationReadsTableExists(): bool
+    {
+        return Schema::hasTable('erp_notification_reads');
     }
 
     private function visibleEvents(User $user): Builder

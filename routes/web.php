@@ -5,6 +5,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FarmerController;
 use App\Http\Controllers\FarmerQuotaController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SalesDashboardController;
 use App\Http\Controllers\StockLevelController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SystemAccessController;
