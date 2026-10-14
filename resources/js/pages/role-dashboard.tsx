@@ -205,7 +205,8 @@ function FinanceDashboard({ financeData }: { financeData: FinanceSnapshot }) {
         <>
             <Head title="Finance operations dashboard" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <button
                         type="button"
                         aria-label="Toggle navigation"
@@ -880,5 +881,3 @@ export default function RoleDashboard({ role, dashboardData }: { role: Role; das
         </>
     );
 }
-
- 

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
 use App\Models\Sale;
 use App\Services\SalesInventoryService;
+use App\Services\WorkspaceDashboardData;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SalesDashboardController extends Controller
 {
-    public function index(Request $request): InertiaResponse
+    public function index(Request $request, WorkspaceDashboardData $dashboardData): InertiaResponse
     {
         Gate::authorize('viewAny', Sale::class);
 
@@ -77,6 +78,8 @@ class SalesDashboardController extends Controller
             });
 
         return Inertia::render('sales-dashboard', [
+            'role' => 'sales',
+            ...$dashboardData->forRole('sales'),
             'sales' => $sales,
             'filters' => $filters,
             'metrics' => [

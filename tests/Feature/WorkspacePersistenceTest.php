@@ -450,7 +450,7 @@ it('renders all primary workspace screens for their authorized roles', function 
         ['executive', 'dashboard', 'dashboard'],
         ['subsidy', 'farmer-management-dashboard', 'role-dashboard'],
         ['inventory', 'inventory-dashboard', 'role-dashboard'],
-        ['sales', 'sales-dashboard', 'role-dashboard'],
+        ['sales', 'sales-dashboard', 'sales-dashboard'],
         ['finance', 'finance-dashboard', 'role-dashboard'],
         ['hr', 'hr-dashboard', 'role-dashboard'],
         ['subsidy', 'farmer-registry', 'farmer-registry'],

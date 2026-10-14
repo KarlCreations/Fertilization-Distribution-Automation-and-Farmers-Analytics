@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\WorkspaceDashboardData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,7 @@ class HrController extends Controller
     /**
      * Display the HR operations dashboard.
      */
-    public function dashboard(): Response
+    public function dashboard(WorkspaceDashboardData $dashboardData): Response
     {
         $totalEmployees = DB::table('erp_employees')->count();
         $activeEmployees = DB::table('erp_employees')->where('is_active', true)->count();
@@ -120,6 +121,7 @@ class HrController extends Controller
 
         return Inertia::render('role-dashboard', [
             'role' => 'hr',
+            ...$dashboardData->forRole('hr'),
             'dashboardData' => [
                 'metrics' => [
                     'workforceRoster' => $totalEmployees,
@@ -717,12 +719,26 @@ class HrController extends Controller
      */
     public function hrSettings(): Response
     {
-        return $this->settingsResponse('hr');
+        $routePrefix = in_array(auth()->user()->role, ['hr', 'hr_employee'], true)
+            ? 'hr'
+            : 'employee';
+
+        return $this->settingsResponse($routePrefix);
     }
 
     public function employeeSettings(): Response
     {
-        return $this->settingsResponse('employee');
+        $financePreferences = in_array(auth()->user()->role, ['finance', 'finance_staff'], true)
+            ? (auth()->user()->finance_notification_preferences ?? [
+                'quota_updates' => true,
+                'contract_updates' => true,
+                'audit_updates' => true,
+            ])
+            : null;
+
+        return Inertia::render('employee-settings', [
+            'financePreferences' => $financePreferences,
+        ]);
     }
 
     private function settingsResponse(string $routePrefix): Response
@@ -849,6 +865,25 @@ class HrController extends Controller
         $this->logAuditEvent('PROFILE_PHOTO_UPDATED', 'User', (string) $user->id);
 
         return back()->with('success', 'Profile photo updated successfully.');
+    }
+
+    /**
+     * Remove the authenticated user's profile photo.
+     */
+    public function deleteProfilePhoto(): RedirectResponse
+    {
+        $user = auth()->user();
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+        }
+
+        $user->forceFill([
+            'profile_photo_path' => null,
+            'avatar' => null,
+        ])->save();
+
+        return back()->with('success', 'Profile photo removed successfully.');
     }
 
     /**

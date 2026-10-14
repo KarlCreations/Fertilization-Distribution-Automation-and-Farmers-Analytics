@@ -11,7 +11,6 @@ import {
     Sprout,
     Truck,
     UserCog,
-    UserRound,
     UsersRound,
     WalletCards,
     X,
@@ -39,8 +38,25 @@ export const workspaceLinks = [
         roles: ['executive', 'admin', 'operations_director', 'hr', 'hr_employee'],
     },
     { label: 'Attendance & Leave', icon: CalendarClock, routeName: 'hr-attendance-leave', roles: ['hr', 'hr_employee'] },
-    { label: 'My profile', icon: UserRound, routeName: 'hr-profile', roles: ['hr', 'hr_employee'] },
-    { label: 'Settings', icon: Settings, routeName: 'hr-settings', roles: ['hr', 'hr_employee'] },
+    {
+        label: 'Settings',
+        icon: Settings,
+        routeName: 'hr-settings',
+        roles: [
+            'inventory',
+            'inventory_staff',
+            'sales',
+            'sales_staff',
+            'finance',
+            'finance_staff',
+            'hr',
+            'hr_employee',
+            'subsidy',
+            'subsidy_staff',
+            'field_operations',
+            'field_operations_staff',
+        ],
+    },
     {
         label: 'Farmer registry',
         icon: Sprout,
@@ -143,37 +159,36 @@ export const workspaceLinks = [
         roles: ['executive', 'admin', 'operations_director'],
     },
 
-    // PERSONAL SETTINGS
-    {
-        label: 'My Settings',
-        icon: Settings,
-        routeName: 'employee-settings',
-        roles: [
-            'inventory',
-            'inventory_staff',
-            'sales',
-            'sales_staff',
-            'finance',
-            'finance_staff',
-            'subsidy',
-            'subsidy_staff',
-            'field_operations',
-            'field_operations_staff',
-        ],
-    },
 ];
 
 export default function WorkspaceSidebar() {
     const { auth } = usePage<SharedData>().props;
     const visibleLinks = workspaceLinks.filter(({ roles }) => roles.includes(String(auth.user.role)));
-    const isFinanceUser = ['finance', 'finance_staff'].includes(String(auth.user.role));
+    const settingsLinks = visibleLinks.filter(({ routeName }) => ['hr-settings', 'system-settings'].includes(routeName));
+    const primaryLinks = visibleLinks.filter(({ routeName }) => !['hr-settings', 'system-settings'].includes(routeName));
 
     return (
         <>
             <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
                 <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
                 <nav className="grid gap-1" aria-label="Primary navigation">
-                    {visibleLinks.map(({ label, icon: Icon, routeName }) => {
+                    {primaryLinks.map(({ label, icon: Icon, routeName }) => {
+                        const active = route().current(routeName);
+
+                        return (
+                            <Link
+                                key={routeName}
+                                href={route(routeName)}
+                                className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium ${
+                                    active ? 'bg-[#eff4ff] text-[#175cd3]' : 'text-[#475467] hover:bg-[#f9fafb]'
+                                }`}
+                            >
+                                <Icon className="size-4" />
+                                {label}
+                            </Link>
+                        );
+                    })}
+                    {settingsLinks.map(({ label, icon: Icon, routeName }) => {
                         const active = route().current(routeName);
 
                         return (
@@ -211,6 +226,8 @@ export function WorkspaceMobileNavigation() {
     const { auth } = usePage<SharedData>().props;
     const [isOpen, setIsOpen] = useState(false);
     const visibleLinks = workspaceLinks.filter(({ roles }) => roles.includes(String(auth.user.role)));
+    const settingsLinks = visibleLinks.filter(({ routeName }) => ['hr-settings', 'system-settings'].includes(routeName));
+    const primaryLinks = visibleLinks.filter(({ routeName }) => !['hr-settings', 'system-settings'].includes(routeName));
 
     return (
         <>
@@ -244,7 +261,20 @@ export function WorkspaceMobileNavigation() {
                             </button>
                         </div>
                         <nav className="grid gap-1" aria-label="Mobile primary navigation">
-                            {visibleLinks.map(({ label, icon: Icon, routeName }) => (
+                            {primaryLinks.map(({ label, icon: Icon, routeName }) => (
+                                <Link
+                                    key={routeName}
+                                    href={route(routeName)}
+                                    onClick={() => setIsOpen(false)}
+                                    className={`flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium ${
+                                        route().current(routeName) ? 'bg-[#eff4ff] text-[#175cd3]' : 'text-[#475467] hover:bg-[#f9fafb]'
+                                    }`}
+                                >
+                                    <Icon className="size-4" />
+                                    {label}
+                                </Link>
+                            ))}
+                            {settingsLinks.map(({ label, icon: Icon, routeName }) => (
                                 <Link
                                     key={routeName}
                                     href={route(routeName)}
@@ -274,4 +304,3 @@ export function WorkspaceMobileNavigation() {
         </>
     );
 }
-

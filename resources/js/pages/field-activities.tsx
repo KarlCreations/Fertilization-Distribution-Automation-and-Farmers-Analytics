@@ -182,11 +182,13 @@ export default function FieldActivities({
         <>
             <Head title="Field Activities" />
 
-        <div className="flex min-h-screen items-start bg-[#f5f8f6]">
-            <WorkspaceSidebar />
+        <div className="min-h-screen bg-[#f5f8f6] dark:bg-gray-950">
+            <WorkspaceHeader />
 
-            <main className="min-w-0 flex-1 px-4 py-4 sm:px-5 lg:px-6">
-                <WorkspaceHeader />
+            <div className="flex min-h-screen items-start">
+                <WorkspaceSidebar />
+
+                <main className="min-w-0 flex-1 px-4 py-4 sm:px-5 lg:px-6">
                     <div className="mx-auto max-w-[1600px] space-y-4">
                         {/* Page heading */}
                         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -637,6 +639,7 @@ export default function FieldActivities({
                         </section>
                     </div>
                 </main>
+            </div>
             </div>
 
             {/* Update activity modal */}

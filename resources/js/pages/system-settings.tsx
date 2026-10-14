@@ -25,6 +25,7 @@ import {
 import WorkspaceNotifications from '@/components/workspace-notifications';
 import WorkspaceHelpButton from '@/components/workspace-help-button';
 import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { type SharedData } from '@/types';
 
 const metrics = [
@@ -142,7 +143,6 @@ export default function SystemSettings({ databaseStatus, auditEvents }: { databa
     const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
     const [auditSearch, setAuditSearch] = useState('');
     const [settingsSearch, setSettingsSearch] = useState('');
-    const profileForm = useForm({ name: auth.user.name, email: auth.user.email });
     const passwordForm = useForm({ current_password: '', password: '', password_confirmation: '' });
     const matchingConfigurationAreas = useMemo(
         () => configurationAreas.filter(({ title }) => title.toLocaleLowerCase().includes(settingsSearch.trim().toLocaleLowerCase())),
@@ -154,11 +154,6 @@ export default function SystemSettings({ databaseStatus, auditEvents }: { databa
         return auditEvents.filter((event) => !query
             || [event.user_name ?? '', event.action, event.module ?? ''].some((value) => value.toLocaleLowerCase().includes(query)));
     }, [auditEvents, auditSearch]);
-
-    function submitProfile(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        profileForm.patch(route('profile.update'), { preserveScroll: true });
-    }
 
     function submitPassword(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -172,7 +167,8 @@ export default function SystemSettings({ databaseStatus, auditEvents }: { databa
         <>
             <Head title="System settings" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
@@ -238,7 +234,7 @@ export default function SystemSettings({ databaseStatus, auditEvents }: { databa
 
                         <nav className="mb-6 flex gap-2 overflow-x-auto rounded-lg border border-[#eaecf0] bg-white p-2" aria-label="Settings sections">
                             {[
-                                { label: 'Account settings', href: '#account-settings' },
+                                { label: 'Access & security', href: '#access-security' },
                                 { label: 'User management', href: route('system-admin') },
                                 { label: 'Roles & permissions', href: route('system-admin') },
                                 { label: 'System configuration', href: route('system-settings'), active: true },
@@ -334,32 +330,13 @@ export default function SystemSettings({ databaseStatus, auditEvents }: { databa
                         </Panel>
 
                         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-                            <div id="account-settings" className="scroll-mt-24 xl:col-span-2">
-                                <Panel title="Account settings" icon={UserCog}>
-                                <div className="grid gap-6 p-5 lg:grid-cols-2">
-                                    <form onSubmit={submitProfile} className="grid gap-4">
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-[#101828]">Profile details</h3>
-                                            <p className="mt-1 text-xs text-[#667085]">Update the executive account name and email address.</p>
-                                        </div>
-                                        <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
-                                            Full name
-                                            <input value={profileForm.data.name} onChange={(event) => profileForm.setData('name', event.target.value)} required className="h-10 rounded-md border border-[#d0d5dd] px-3 outline-none focus:border-[#175cd3]" />
-                                            {profileForm.errors.name && <span className="text-xs font-normal text-[#b42318]">{profileForm.errors.name}</span>}
-                                        </label>
-                                        <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
-                                            Email address
-                                            <input type="email" value={profileForm.data.email} onChange={(event) => profileForm.setData('email', event.target.value)} required className="h-10 rounded-md border border-[#d0d5dd] px-3 outline-none focus:border-[#175cd3]" />
-                                            {profileForm.errors.email && <span className="text-xs font-normal text-[#b42318]">{profileForm.errors.email}</span>}
-                                        </label>
-                                        <button type="submit" disabled={profileForm.processing} className="h-10 w-fit rounded-md bg-[#175cd3] px-4 text-sm font-semibold text-white disabled:opacity-50">
-                                            {profileForm.processing ? 'Saving…' : 'Save profile'}
-                                        </button>
-                                    </form>
+                            <div id="access-security" className="scroll-mt-24 xl:col-span-2">
+                                <Panel title="Access & security" icon={UserCog}>
+                                <div className="p-5">
                                     <form onSubmit={submitPassword} className="grid gap-4">
                                         <div>
                                             <h3 className="text-sm font-semibold text-[#101828]">Password & security</h3>
-                                            <p className="mt-1 text-xs text-[#667085]">Change the password used to access the executive dashboard.</p>
+                                            <p className="mt-1 text-xs text-[#667085]">Change the password used to access the application. Profile details are managed separately from the profile screen.</p>
                                         </div>
                                         {(['current_password', 'password', 'password_confirmation'] as const).map((field) => (
                                             <label key={field} className="grid gap-1.5 text-sm font-medium text-[#344054]">

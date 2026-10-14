@@ -24,6 +24,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import PowerBiReport from '@/components/power-bi-report';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import WorkspaceHelpButton from '@/components/workspace-help-button';
 import WorkspaceNotifications from '@/components/workspace-notifications';
 import { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
@@ -149,6 +150,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
     const role = String(auth.user.role);
     const homeRoute = role === 'finance' || role === 'finance_staff' ? 'finance-dashboard' : 'dashboard';
     const canManageSystem = ['executive', 'admin', 'operations_director'].includes(role);
+    const settingsRoute = canManageSystem ? 'system-settings' : 'hr-settings';
 
     return (
         <aside className="fixed inset-y-16 left-0 z-30 w-64 border-r border-[#eaecf0] bg-white p-3 shadow-lg lg:hidden">
@@ -172,16 +174,14 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
                 </Link>
             </nav>
             <div className="mt-7 border-t border-[#eaecf0] pt-5">
-                {canManageSystem && (
-                    <Link
-                        href={route('system-settings')}
-                        onClick={onNavigate}
-                        className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
-                    >
-                        <Settings className="size-4" />
-                        System settings
-                    </Link>
-                )}
+                <Link
+                    href={route(settingsRoute)}
+                    onClick={onNavigate}
+                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Settings className="size-4" />
+                    Settings
+                </Link>
                 <Link
                     href={route('logout')}
                     method="post"
@@ -307,7 +307,8 @@ export default function FinanceImpact({ metrics, quotaLedger, tradeContracts, fi
         <>
             <Head title="Finance & impact" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">

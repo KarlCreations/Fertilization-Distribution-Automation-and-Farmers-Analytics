@@ -24,6 +24,7 @@ import CrudManager from '@/components/crud-manager';
 import WorkspaceHelpButton from '@/components/workspace-help-button';
 import WorkspaceNotifications from '@/components/workspace-notifications';
 import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { type SharedData } from '@/types';
 
 const metrics = [
@@ -226,7 +227,8 @@ export default function SalesCommodities({
         <>
             <Head title="Sales & commodities" />
             <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">

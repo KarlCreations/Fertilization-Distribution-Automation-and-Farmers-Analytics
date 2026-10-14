@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,45 +13,14 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'name',
-        'email',
-        'role',
-        'password',
-        'preferences',
-        'profile_photo_path',
+        'name', 'email', 'role', 'password', 'preferences', 'profile_photo_path',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
-    /**
-     * The accessors to append to the model's array form.
-     *
-     * @var list<string>
-     */
-    protected $appends = [
-        'avatar',
-    ];
+    protected $appends = ['avatar'];
 
-    /**
-     * Get the user's profile photo URL, if one has been uploaded.
-     *
-     * The URL is relative to the application root so it resolves against the
-     * host and port the app is actually served from.
-     */
     protected function avatar(): Attribute
     {
         return Attribute::get(fn (): ?string => $this->profile_photo_path
@@ -60,11 +28,7 @@ class User extends Authenticatable
             : null);
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     protected function casts(): array
     {
         return [

@@ -7,6 +7,7 @@ use App\Http\Controllers\FarmerController;
 use App\Http\Controllers\FarmerQuotaController;
 use App\Http\Controllers\FieldActivityController;
 use App\Http\Controllers\FinanceDisbursementController;
+use App\Http\Controllers\FinanceSettingsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SalesDashboardController;
 use App\Http\Controllers\StockLevelController;
@@ -84,7 +85,10 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->middleware('role:executive,admin,operations_director')->name('dashboard');
 
-    Route::get('farmer-management-dashboard', function () {
+    Route::get('farmer-management-dashboard', function (WorkspaceDashboardData $dashboardData) {
+        return Inertia::render('role-dashboard', ['role' => 'subsidy', ...$dashboardData->forRole('subsidy')]);
+
+        /*
         return Inertia::render('subsidy-dashboard', [
             'subsidyMetrics' => [
                 'registeredFarmers' => DB::table('erp_farmers')->count(),
@@ -131,6 +135,7 @@ Route::middleware(['auth'])->group(function () {
                     'erp_zones.name as zone_name',
                 ]),
         ]);
+        */
     })->middleware('role:subsidy,subsidy_staff,field_operations,field_operations_staff')->name('farmer-management-dashboard');
 
     Route::get('employee-settings', [HrController::class, 'employeeSettings'])
@@ -149,6 +154,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('employee-settings/notifications', [HrController::class, 'updateNotificationPreferences'])
         ->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,subsidy,subsidy_staff,field_operations,field_operations_staff')
         ->name('employee-settings.notifications');
+    Route::patch('finance-settings', [FinanceSettingsController::class, 'update'])
+        ->middleware('role:finance,finance_staff')
+        ->name('finance-settings.update');
+    Route::post('finance-settings/avatar', [FinanceSettingsController::class, 'updateAvatar'])
+        ->middleware('role:finance,finance_staff')
+        ->name('finance-settings.avatar');
     Route::patch('hr-profile', [HrController::class, 'updateProfile'])
         ->middleware('role:hr,hr_employee')
         ->name('hr-profile.update');
@@ -181,7 +192,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('hr-profile');
 
     Route::get('hr-settings', [HrController::class, 'hrSettings'])
-        ->middleware('role:hr,hr_employee')
+        ->middleware('role:inventory,inventory_staff,sales,sales_staff,finance,finance_staff,hr,hr_employee,subsidy,subsidy_staff,field_operations,field_operations_staff')
         ->name('hr-settings');
 
     Route::post('hr/attendance', [HrController::class, 'storeDailyAttendance'])
@@ -209,9 +220,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('sales/{sale}/restore', [SalesDashboardController::class, 'restore'])->name('sales.restore');
     });
 
-    Route::get('finance-dashboard', function (FinanceDashboardData $financeData) {
+    Route::get('finance-dashboard', function (FinanceDashboardData $financeData, WorkspaceDashboardData $dashboardData) {
         return Inertia::render('role-dashboard', [
             'role' => 'finance',
+            ...$dashboardData->forRole('finance'),
             'financeData' => $financeData->snapshot(),
         ]);
     })->middleware('role:finance,finance_staff')->name('finance-dashboard');
@@ -694,40 +706,9 @@ Route::middleware(['auth'])->group(function () {
             ->with('success', 'Farmer deleted successfully.');
     })->middleware('role:subsidy,subsidy_staff')->name('farmer-registry.destroy');
 
-    Route::get('hr-workforce', function () {
-        return Inertia::render('hr-workforce', [
-            'workforceMetrics' => [
-                'activeWorkforce' => DB::table('erp_employees')->where('is_active', true)->count(),
-                'workforceReadiness' => DB::table('erp_employees')->count(),
-                'fieldDispatch' => DB::table('erp_employees')->whereNotNull('zone_id')->count(),
-                'complianceRecords' => DB::table('erp_audit_events')->where('module', 'hr')->count(),
-            ],
-            'employees' => DB::table('erp_employees')
-                ->join('users', 'users.id', '=', 'erp_employees.user_id')
-                ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_employees.zone_id')
-                ->leftJoin('erp_depots', 'erp_depots.id', '=', 'erp_employees.depot_id')
-                ->orderBy('users.name')
-                ->get([
-                    'erp_employees.employee_code',
-                    'erp_employees.id',
-                    'erp_employees.user_id',
-                    'erp_employees.department',
-                    'erp_employees.position',
-                    'erp_employees.is_active',
-                    'erp_employees.zone_id',
-                    'erp_employees.depot_id',
-                    'users.name',
-                    'users.email',
-                    'erp_zones.name as zone_name',
-                    'erp_depots.name as depot_name',
-                ]),
-            'availableUsers' => DB::table('users')
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
-            'zones' => DB::table('erp_zones')->orderBy('zone_no')->get(['id', 'name']),
-            'depots' => DB::table('erp_depots')->orderBy('name')->get(['id', 'name']),
-        ]);
-    })->middleware('role:executive,admin,operations_director,hr,hr_employee')->name('hr-workforce');
+    Route::get('hr-workforce', [HrController::class, 'workforce'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr-workforce');
 
     Route::post('hr/employees', [HrController::class, 'storeEmployee'])
         ->middleware('role:executive,admin,operations_director,hr,hr_employee')

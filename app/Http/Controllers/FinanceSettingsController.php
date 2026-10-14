@@ -47,10 +47,13 @@ class FinanceSettingsController extends Controller
             'avatar' => ['required', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max(2048)],
         ]);
         $user = $request->user();
-        $previousAvatar = $user->getRawOriginal('avatar');
+        $previousAvatar = $user->getRawOriginal('profile_photo_path');
         $avatarPath = $validated['avatar']->storePublicly('profile-photos', 'public');
 
-        $user->forceFill(['avatar' => $avatarPath])->save();
+        $user->forceFill([
+            'avatar' => $avatarPath,
+            'profile_photo_path' => $avatarPath,
+        ])->save();
 
         if ($previousAvatar !== null && str_starts_with($previousAvatar, 'profile-photos/')) {
             Storage::disk('public')->delete($previousAvatar);

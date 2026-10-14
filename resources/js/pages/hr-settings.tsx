@@ -1,11 +1,13 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Bell, KeyRound, LoaderCircle, ShieldCheck, Upload, UserRound, X } from 'lucide-react';
-import { type ChangeEvent, type FormEventHandler, useState } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { Bell, KeyRound, MonitorCog, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
+import { type FormEventHandler, useEffect, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAppearance } from '@/hooks/use-appearance';
 import WorkspaceHeader from '@/components/workspace-header';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
@@ -99,16 +101,6 @@ export default function HrSettings({
     const notificationRoute = routePrefix === 'hr' ? 'hr.settings.notifications' : 'employee-settings.notifications';
     const avatar = profile.user.avatar ?? (auth.user.avatar as string | null) ?? null;
 
-    const [photoFile, setPhotoFile] = useState<File | null>(null);
-    const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
-    const [photoError, setPhotoError] = useState<string | null>(null);
-    const [photoProcessing, setPhotoProcessing] = useState(false);
-
-    const { data, setData, patch, processing, errors } = useForm({
-        name: profile.user.name,
-        email: profile.user.email,
-    });
-
     const {
         data: passwordData,
         setData: setPasswordData,
@@ -122,6 +114,15 @@ export default function HrSettings({
         password_confirmation: '',
     });
 
+    const { appearance, updateAppearance } = useAppearance();
+    const [workspacePreferences, setWorkspacePreferences] = useState(() => ({
+        density: typeof window === 'undefined' ? 'comfortable' : localStorage.getItem('workspace-density') || 'comfortable',
+        refreshInterval: typeof window === 'undefined' ? 'manual' : localStorage.getItem('workspace-refresh-interval') || 'manual',
+        landingPage: typeof window === 'undefined' ? 'dashboard' : localStorage.getItem('workspace-landing-page') || 'dashboard',
+    }));
+    const [preferencesSaved, setPreferencesSaved] = useState(false);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+
     const {
         data: notifData,
         setData: setNotifData,
@@ -134,15 +135,13 @@ export default function HrSettings({
         employee_updates: Boolean(notificationPreferences?.employee_updates ?? true),
     });
 
-    const submitProfile: FormEventHandler = (e) => {
-        e.preventDefault();
-        patch(route(routeName('.update')));
-    };
-
     const submitPassword: FormEventHandler = (e) => {
         e.preventDefault();
         putPassword(route(routeName('.password')), {
-            onSuccess: () => resetPassword(),
+            onSuccess: () => {
+                resetPassword();
+                setPasswordDialogOpen(false);
+            },
         });
     };
 
@@ -153,49 +152,18 @@ export default function HrSettings({
         });
     };
 
-    const uploadPhoto = () => {
-        if (!photoFile) {
-            setPhotoError('Choose a JPG or PNG image first.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('profile_photo', photoFile);
-
-        setPhotoProcessing(true);
-        setPhotoError(null);
-
-        router.post(route(routeName('.photo')), formData, {
-            preserveScroll: true,
-            onFinish: () => {
-                setPhotoProcessing(false);
-                setPhotoFile(null);
-                if (photoPreviewUrl) {
-                    URL.revokeObjectURL(photoPreviewUrl);
-                }
-                setPhotoPreviewUrl(null);
-                const input = document.getElementById('profile_photo_input') as HTMLInputElement | null;
-                if (input) input.value = '';
-            },
-            onError: (formErrors) => setPhotoError(formErrors.profile_photo ?? 'Profile photo upload failed.'),
-        });
+    const saveWorkspacePreferences = () => {
+        localStorage.setItem('workspace-density', workspacePreferences.density);
+        localStorage.setItem('workspace-refresh-interval', workspacePreferences.refreshInterval);
+        localStorage.setItem('workspace-landing-page', workspacePreferences.landingPage);
+        setPreferencesSaved(true);
     };
 
-    const handlePhotoSelection = (event: ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = event.target.files?.[0] ?? null;
-
-        if (photoPreviewUrl) {
-            URL.revokeObjectURL(photoPreviewUrl);
-        }
-
-        setPhotoFile(selectedFile);
-        setPhotoPreviewUrl(selectedFile ? URL.createObjectURL(selectedFile) : null);
-        setPhotoError(null);
-    };
-
-    const removePhoto = () => {
-        router.delete(route(routeName('.photo.destroy')), { preserveScroll: true });
-    };
+    useEffect(() => {
+        if (!preferencesSaved) return;
+        const timeout = window.setTimeout(() => setPreferencesSaved(false), 2500);
+        return () => window.clearTimeout(timeout);
+    }, [preferencesSaved]);
 
     return (
         <>
@@ -231,25 +199,12 @@ export default function HrSettings({
                                     Manage your personal account details, contact information, and sign-in security.
                                 </p>
                             </div>
-                            <Link
-                                href={route(routePrefix === 'hr' ? 'hr-profile' : 'employee-settings.profile')}
-                                className="flex h-9 w-fit items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-semibold text-[#344054] hover:bg-[#f9fafb]"
-                            >
-                                <UserRound className="size-4" />
-                                View profile
-                            </Link>
                         </div>
 
                         <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
                             <aside className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                 <div className="flex flex-col items-center text-center">
-                                    {photoPreviewUrl ? (
-                                        <img
-                                            src={photoPreviewUrl}
-                                            alt="Selected photo preview"
-                                            className="size-24 rounded-full object-cover ring-4 ring-[#eff4ff]"
-                                        />
-                                    ) : avatar ? (
+                                    {avatar ? (
                                         <img
                                             src={avatar}
                                             alt={profile.user.name}
@@ -267,51 +222,13 @@ export default function HrSettings({
                                     </div>
                                 </div>
 
-                                <div className="mt-6 space-y-3">
-                                    <input
-                                        id="profile_photo_input"
-                                        type="file"
-                                        accept="image/jpeg,image/png"
-                                        className="hidden"
-                                        onChange={handlePhotoSelection}
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full justify-center"
-                                        onClick={() => document.getElementById('profile_photo_input')?.click()}
-                                    >
-                                        <Upload className="mr-2 size-4" />
-                                        {avatar ? 'Change photo' : 'Upload photo'}
-                                    </Button>
-                                    {photoFile && (
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            className="w-full justify-center"
-                                            onClick={uploadPhoto}
-                                            disabled={photoProcessing}
-                                        >
-                                            {photoProcessing ? (
-                                                <LoaderCircle className="mr-2 size-4 animate-spin" />
-                                            ) : (
-                                                <Upload className="mr-2 size-4" />
-                                            )}
-                                            Save selected photo
-                                        </Button>
-                                    )}
-                                    {avatar && (
-                                        <Button type="button" variant="destructive" className="w-full justify-center" onClick={removePhoto}>
-                                            <X className="mr-2 size-4" />
-                                            Remove photo
-                                        </Button>
-                                    )}
-                                    {photoError && <p className="text-sm text-[#b42318]">{photoError}</p>}
-                                </div>
-
                                 <div className="mt-6 rounded-lg border border-[#eaecf0] bg-[#f9fafb] p-4">
-                                    <p className="text-xs font-semibold tracking-[0.08em] text-[#667085] uppercase">Employment</p>
+                                    <p className="text-xs font-semibold tracking-[0.08em] text-[#667085] uppercase">Account summary</p>
                                     <dl className="mt-3 space-y-3 text-sm">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <dt className="text-[#667085]">Role</dt>
+                                            <dd className="font-medium text-[#101828]">{profile.user.role ?? 'Employee'}</dd>
+                                        </div>
                                         <div className="flex items-center justify-between gap-3">
                                             <dt className="text-[#667085]">Employee code</dt>
                                             <dd className="font-medium text-[#101828]">{employee?.employee_code ?? 'Not assigned'}</dd>
@@ -343,53 +260,6 @@ export default function HrSettings({
                             <div className="space-y-6">
                                 <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                     <div className="mb-5 flex items-center gap-3">
-                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#eff4ff] text-[#175cd3]">
-                                            <UserRound className="size-4" />
-                                        </span>
-                                        <div>
-                                            <h2 className="text-lg font-semibold text-[#101828]">Profile details</h2>
-                                            <p className="text-sm text-[#667085]">
-                                                Update the public name and contact information shown in your HR profile.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <form onSubmit={submitProfile} className="space-y-5">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="name">Full name</Label>
-                                            <Input
-                                                id="name"
-                                                value={data.name}
-                                                onChange={(e) => setData('name', e.target.value)}
-                                                required
-                                                autoComplete="name"
-                                            />
-                                            <InputError message={errors.name} />
-                                        </div>
-
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="email">Email address</Label>
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                value={data.email}
-                                                onChange={(e) => setData('email', e.target.value)}
-                                                required
-                                                autoComplete="username"
-                                            />
-                                            <InputError message={errors.email} />
-                                        </div>
-
-                                        <div className="flex items-center justify-end">
-                                            <Button type="submit" disabled={processing}>
-                                                {processing ? 'Saving...' : 'Save profile'}
-                                            </Button>
-                                        </div>
-                                    </form>
-                                </section>
-
-                                <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                    <div className="mb-5 flex items-center gap-3">
                                         <span className="flex size-9 items-center justify-center rounded-md bg-[#f2f4f7] text-[#344054]">
                                             <KeyRound className="size-4" />
                                         </span>
@@ -398,53 +268,140 @@ export default function HrSettings({
                                             <p className="text-sm text-[#667085]">Update your password to keep your account secure.</p>
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPasswordDialogOpen(true)}
+                                        className="flex w-full items-center justify-between rounded-lg border border-[#d0d5dd] bg-[#f9fafb] px-4 py-3 text-left transition hover:border-[#175cd3] hover:bg-[#eff4ff]"
+                                    >
+                                        <span>
+                                            <span className="block text-sm font-semibold text-[#101828]">Update password</span>
+                                            <span className="mt-1 block text-xs text-[#667085]">Open the secure password change form.</span>
+                                        </span>
+                                        <KeyRound className="size-4 text-[#175cd3]" />
+                                    </button>
+                                </section>
 
-                                    <form onSubmit={submitPassword} className="space-y-5">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="current_password">Current password</Label>
-                                            <Input
-                                                id="current_password"
-                                                type="password"
-                                                value={passwordData.current_password}
-                                                onChange={(e) => setPasswordData('current_password', e.target.value)}
-                                                autoComplete="current-password"
-                                                required
-                                            />
-                                            <InputError message={passwordErrors.current_password} />
-                                        </div>
+                                <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Update password</DialogTitle>
+                                            <DialogDescription>Enter your current password and choose a new password for this account.</DialogDescription>
+                                        </DialogHeader>
+                                        <form onSubmit={submitPassword} className="space-y-5">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="current_password">Current password</Label>
+                                                <Input
+                                                    id="current_password"
+                                                    type="password"
+                                                    value={passwordData.current_password}
+                                                    onChange={(e) => setPasswordData('current_password', e.target.value)}
+                                                    autoComplete="current-password"
+                                                    required
+                                                />
+                                                <InputError message={passwordErrors.current_password} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="password">New password</Label>
+                                                <Input
+                                                    id="password"
+                                                    type="password"
+                                                    value={passwordData.password}
+                                                    onChange={(e) => setPasswordData('password', e.target.value)}
+                                                    autoComplete="new-password"
+                                                    required
+                                                />
+                                                <InputError message={passwordErrors.password} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="password_confirmation">Confirm new password</Label>
+                                                <Input
+                                                    id="password_confirmation"
+                                                    type="password"
+                                                    value={passwordData.password_confirmation}
+                                                    onChange={(e) => setPasswordData('password_confirmation', e.target.value)}
+                                                    autoComplete="new-password"
+                                                    required
+                                                />
+                                                <InputError message={passwordErrors.password_confirmation} />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={passwordProcessing}>
+                                                    {passwordProcessing ? 'Updating...' : 'Update password'}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
 
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="password">New password</Label>
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                value={passwordData.password}
-                                                onChange={(e) => setPasswordData('password', e.target.value)}
-                                                autoComplete="new-password"
-                                                required
-                                            />
-                                            <InputError message={passwordErrors.password} />
+                                <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                                    <div className="mb-5 flex items-center gap-3">
+                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#eff4ff] text-[#175cd3]">
+                                            <MonitorCog className="size-4" />
+                                        </span>
+                                        <div>
+                                            <h2 className="text-lg font-semibold text-[#101828]">Workspace preferences</h2>
+                                            <p className="text-sm text-[#667085]">Control how dashboards behave on this device.</p>
                                         </div>
+                                    </div>
 
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="password_confirmation">Confirm new password</Label>
-                                            <Input
-                                                id="password_confirmation"
-                                                type="password"
-                                                value={passwordData.password_confirmation}
-                                                onChange={(e) => setPasswordData('password_confirmation', e.target.value)}
-                                                autoComplete="new-password"
-                                                required
-                                            />
-                                            <InputError message={passwordErrors.password_confirmation} />
-                                        </div>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <label className="grid gap-2 text-sm font-medium text-[#344054]">
+                                            Appearance
+                                            <select
+                                                value={appearance}
+                                                onChange={(event) => updateAppearance(event.target.value as 'light' | 'dark' | 'system')}
+                                                className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm outline-none focus:border-[#175cd3]"
+                                            >
+                                                <option value="system">Use device setting</option>
+                                                <option value="light">Light</option>
+                                                <option value="dark">Dark</option>
+                                            </select>
+                                        </label>
+                                        <label className="grid gap-2 text-sm font-medium text-[#344054]">
+                                            Dashboard density
+                                            <select
+                                                value={workspacePreferences.density}
+                                                onChange={(event) => setWorkspacePreferences((current) => ({ ...current, density: event.target.value }))}
+                                                className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm outline-none focus:border-[#175cd3]"
+                                            >
+                                                <option value="comfortable">Comfortable</option>
+                                                <option value="compact">Compact</option>
+                                            </select>
+                                        </label>
+                                        <label className="grid gap-2 text-sm font-medium text-[#344054]">
+                                            Data refresh
+                                            <select
+                                                value={workspacePreferences.refreshInterval}
+                                                onChange={(event) => setWorkspacePreferences((current) => ({ ...current, refreshInterval: event.target.value }))}
+                                                className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm outline-none focus:border-[#175cd3]"
+                                            >
+                                                <option value="manual">Manual refresh</option>
+                                                <option value="30">Every 30 seconds</option>
+                                                <option value="60">Every minute</option>
+                                                <option value="300">Every 5 minutes</option>
+                                            </select>
+                                        </label>
+                                        <label className="grid gap-2 text-sm font-medium text-[#344054]">
+                                            Default landing page
+                                            <select
+                                                value={workspacePreferences.landingPage}
+                                                onChange={(event) => setWorkspacePreferences((current) => ({ ...current, landingPage: event.target.value }))}
+                                                className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm outline-none focus:border-[#175cd3]"
+                                            >
+                                                <option value="dashboard">Overview dashboard</option>
+                                                <option value="hr-workforce">HR & workforce</option>
+                                                <option value="inventory-warehouses">Inventory</option>
+                                                <option value="sales-dashboard">Sales</option>
+                                            </select>
+                                        </label>
+                                    </div>
 
-                                        <div className="flex items-center justify-end">
-                                            <Button type="submit" variant="secondary" disabled={passwordProcessing}>
-                                                {passwordProcessing ? 'Updating...' : 'Update password'}
-                                            </Button>
-                                        </div>
-                                    </form>
+                                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#eaecf0] pt-4">
+                                        <p className="flex items-center gap-2 text-xs text-[#667085]"><SlidersHorizontal className="size-4" /> Preferences are saved for this browser.</p>
+                                        <Button type="button" onClick={saveWorkspacePreferences}>
+                                            {preferencesSaved ? 'Saved' : 'Save preferences'}
+                                        </Button>
+                                    </div>
                                 </section>
 
                                 <section className="rounded-lg border border-[#eaecf0] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">

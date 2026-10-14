@@ -289,3 +289,190 @@
     color: #9ca3af;
     opacity: 1;
 }
+
+/* Shared dark palette for the dashboard pages that use the ERP color tokens. */
+.dark [class*='bg-[#f6f8fb]'],
+.dark [class*='bg-[#f9fafb]'],
+.dark [class*='bg-[#fbfcfe]'],
+.dark [class*='bg-[#f2f4f7]'],
+.dark [class*='bg-[#eef2f6]'] {
+    background-color: #111827 !important;
+}
+
+.dark [class*='bg-white'] {
+    background-color: #111827 !important;
+}
+
+.dark [class*='bg-[#eff4ff]'],
+.dark [class*='bg-[#eff8ff]'] {
+    background-color: #172554 !important;
+}
+
+.dark [class*='bg-[#ecfdf3]'],
+.dark [class*='bg-[#d1fadf]'] {
+    background-color: #064e3b !important;
+}
+
+.dark [class*='bg-[#fffaeb]'] {
+    background-color: #78350f !important;
+}
+
+.dark [class*='bg-[#fef3f2]'],
+.dark [class*='bg-[#fff1f0]'],
+.dark [class*='bg-[#fff1f2]'] {
+    background-color: #7f1d1d !important;
+}
+
+.dark [class*='bg-[#f4f3ff]'] {
+    background-color: #3b2b64 !important;
+}
+
+.dark [class*='text-[#101828]'] {
+    color: #f9fafb !important;
+}
+
+.dark [class*='text-[#344054]'],
+.dark [class*='text-[#475467]'] {
+    color: #d1d5db !important;
+}
+
+.dark [class*='text-[#667085]'],
+.dark [class*='text-[#98a2b3]'] {
+    color: #9ca3af !important;
+}
+
+.dark [class*='text-[#175cd3]'] {
+    color: #93c5fd !important;
+}
+
+.dark [class*='text-[#067647]'] {
+    color: #6ee7b7 !important;
+}
+
+.dark [class*='text-[#b54708]'] {
+    color: #fbbf24 !important;
+}
+
+.dark [class*='text-[#b42318]'],
+.dark [class*='text-[#d92d20]'] {
+    color: #fca5a5 !important;
+}
+
+.dark [class*='text-[#6938ef]'] {
+    color: #c4b5fd !important;
+}
+
+.dark [class*='border-[#eaecf0]'],
+.dark [class*='border-[#d0d5dd]'],
+.dark [class*='divide-[#f2f4f7]'] {
+    border-color: #374151 !important;
+}
+
+.dark [class*='border-[#abefc6]'] {
+    border-color: #065f46 !important;
+}
+
+.dark [class*='border-[#fecdca]'] {
+    border-color: #7f1d1d !important;
+}
+
+.dark [class*='border-[#fedf89]'] {
+    border-color: #78350f !important;
+}
+
+.dark [class*='bg-[#d0d5dd]'],
+.dark [class*='bg-[#eaecf0]'] {
+    background-color: #374151 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+    color-scheme: dark;
+}
+
+.dark ::placeholder {
+    color: #9ca3af;
+    opacity: 1;
+}
+
+.dark [class*='bg-slate-50'],
+.dark [class*='bg-slate-100'],
+.dark [class*='bg-gray-50'],
+.dark [class*='bg-gray-100'] {
+    background-color: #1f2937 !important;
+}
+
+.dark [class*='text-slate-950'],
+.dark [class*='text-slate-900'],
+.dark [class*='text-gray-950'],
+.dark [class*='text-gray-900'] {
+    color: #f9fafb !important;
+}
+
+.dark [class*='text-slate-700'],
+.dark [class*='text-slate-600'],
+.dark [class*='text-gray-700'],
+.dark [class*='text-gray-600'] {
+    color: #d1d5db !important;
+}
+
+.dark [class*='text-slate-500'],
+.dark [class*='text-gray-500'] {
+    color: #9ca3af !important;
+}
+
+.dark [class*='border-slate-200'],
+.dark [class*='border-slate-300'],
+.dark [class*='border-gray-200'],
+.dark [class*='border-gray-300'] {
+    border-color: #374151 !important;
+}
+
+.dark [class*='bg-[#f4f8f5]'],
+.dark [class*='bg-[#f5f8f6]'],
+.dark [class*='bg-[#f8f9fb]'],
+.dark [class*='bg-[#f8fafc]'] {
+    background-color: #111827 !important;
+}
+
+.dark [class*='text-[#172b21]'],
+.dark [class*='text-[#173d2b]'],
+.dark [class*='text-[#1f2937]'] {
+    color: #f9fafb !important;
+}
+
+.dark [class*='text-[#718176]'] {
+    color: #9ca3af !important;
+}
+
+.dark [class*='bg-emerald-100'] {
+    background-color: #064e3b !important;
+}
+
+.dark [class*='text-emerald-800'] {
+    color: #6ee7b7 !important;
+}
+
+/* Catch the remaining light custom palettes used by the subsidy and field screens. */
+.dark [class*='bg-[#c'],
+.dark [class*='bg-[#d'],
+.dark [class*='bg-[#e'],
+.dark [class*='bg-[#f'] {
+    background-color: #1f2937 !important;
+}
+
+.dark [class*='text-[#173'],
+.dark [class*='text-[#1f'],
+.dark [class*='text-[#23'],
+.dark [class*='text-[#31'],
+.dark [class*='text-[#34'],
+.dark [class*='text-[#42'],
+.dark [class*='text-[#60'],
+.dark [class*='text-[#71'],
+.dark [class*='text-[#82'],
+.dark [class*='text-[#98'],
+.dark [class*='text-[#a2'],
+.dark [class*='text-[#b5'] {
+    color: #d1d5db !important;
+}

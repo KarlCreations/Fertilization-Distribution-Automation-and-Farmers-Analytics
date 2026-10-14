@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { type SharedData } from '@/types';
 
 type SubsidyMetrics = {
@@ -140,8 +141,8 @@ export default function SubsidyDashboard({
             <Head title="Subsidy Dashboard" />
 
             <div className="min-h-screen bg-[#f4f8f5] text-[#172b21]">
-                {/* Header */}
-                <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[#e0ebe3] bg-white/95 px-4 shadow-sm backdrop-blur-md sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <button
                         type="button"
                         aria-label="Open navigation"

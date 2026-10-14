@@ -28,6 +28,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
+import WorkspaceHeader from '@/components/workspace-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -550,7 +551,8 @@ export default function SalesDashboard({ sales, filters, metrics, charts, option
         <TooltipProvider>
             <Head title="Sales dashboard" />
             <div className="min-h-screen bg-slate-50 text-slate-950">
-                <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-6">
+                <WorkspaceHeader />
+                <header className="hidden">
                     <Sheet>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="icon" className="lg:hidden" aria-label="Open navigation"><Menu /></Button>
@@ -563,7 +565,7 @@ export default function SalesDashboard({ sales, filters, metrics, charts, option
                             <nav className="mt-6 grid gap-2" aria-label="Sales navigation">
                                 <Link href={route('sales-dashboard')} className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white">Sales dashboard</Link>
                                 <Link href={route('inventory-warehouses')} className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Inventory & condition</Link>
-                                <Link href={route('employee-settings')} className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">My settings</Link>
+                                <Link href={route('hr-settings')} className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Settings</Link>
                             </nav>
                         </SheetContent>
                     </Sheet>

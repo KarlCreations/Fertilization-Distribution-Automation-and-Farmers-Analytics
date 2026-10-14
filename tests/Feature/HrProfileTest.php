@@ -5,6 +5,13 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 
+function profilePhoto(string $name): UploadedFile
+{
+    $content = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==');
+
+    return UploadedFile::fake()->createWithContent($name, $content)->mimeType('image/png');
+}
+
 test('an hr user sees notification preferences and recent account security details', function () {
     $user = User::factory()->create([
         'role' => 'hr',
@@ -55,7 +62,7 @@ test('an hr user can save individual notification preferences', function () {
 test('guests are redirected to login when uploading a profile photo', function () {
     $this
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('avatar.jpg'),
+            'profile_photo' => profilePhoto('avatar.png'),
         ])
         ->assertRedirect(route('login'));
 });
@@ -66,7 +73,7 @@ test('users without an hr role cannot upload a profile photo', function () {
     $this
         ->actingAs(User::factory()->create(['role' => 'sales_staff']))
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('avatar.jpg'),
+            'profile_photo' => profilePhoto('avatar.png'),
         ])
         ->assertForbidden();
 });
@@ -80,7 +87,7 @@ test('an hr user can upload a profile photo', function () {
         ->actingAs($user)
         ->from('/hr-settings')
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('avatar.jpg'),
+            'profile_photo' => profilePhoto('avatar.png'),
         ]);
 
     $response
@@ -111,7 +118,7 @@ test('uploading a new profile photo replaces the previous photo', function () {
     $this
         ->actingAs($user)
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('first.jpg'),
+            'profile_photo' => profilePhoto('first.png'),
         ]);
 
     $firstPath = $user->refresh()->profile_photo_path;
@@ -119,7 +126,7 @@ test('uploading a new profile photo replaces the previous photo', function () {
     $this
         ->actingAs($user)
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('second.jpg'),
+            'profile_photo' => profilePhoto('second.png'),
         ]);
 
     $user->refresh();
@@ -138,7 +145,7 @@ test('an hr user can remove their profile photo', function () {
     $this
         ->actingAs($user)
         ->post('/hr-profile/photo', [
-            'profile_photo' => UploadedFile::fake()->image('avatar.jpg'),
+            'profile_photo' => profilePhoto('avatar.png'),
         ]);
 
     $path = $user->refresh()->profile_photo_path;

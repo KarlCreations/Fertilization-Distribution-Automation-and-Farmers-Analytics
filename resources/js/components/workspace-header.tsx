@@ -9,7 +9,6 @@ import {
     CircleHelp,
     Leaf,
     MapPinned,
-    Menu,
     Moon,
     Plus,
     Search,
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { useAppearance } from '@/hooks/use-appearance';
+import { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
 type NotificationItem = {
@@ -125,6 +125,12 @@ export default function WorkspaceHeader() {
               .slice(0, 2)
         : 'HR';
 
+    const profileRoute = ['executive', 'admin', 'operations_director'].includes(String(auth.user.role))
+        ? 'system-settings'
+        : ['hr', 'hr_employee'].includes(String(auth.user.role))
+          ? 'hr-profile'
+          : 'employee-settings.profile';
+
     const { appearance, updateAppearance } = useAppearance();
 
     const toggleTheme = () => {
@@ -133,14 +139,7 @@ export default function WorkspaceHeader() {
 
     return (
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white dark:bg-gray-900 dark:border-gray-800 px-4 sm:px-6 shadow-sm">
-            {/* Mobile menu toggle */}
-            <button
-                type="button"
-                aria-label="Open navigation"
-                className="flex size-9 items-center justify-center rounded-md border border-[#d0d5dd] dark:border-gray-700 text-[#475467] dark:text-gray-300 lg:hidden hover:bg-[#f9fafb] dark:hover:bg-gray-800"
-            >
-                <Menu className="size-4" />
-            </button>
+            <WorkspaceMobileNavigation />
 
             {/* Brand Logo */}
             <div className="flex items-center gap-2">
@@ -334,7 +333,7 @@ export default function WorkspaceHeader() {
 
                 {/* User Avatar */}
                 <Link
-                    href={route('hr-profile')}
+                    href={route(profileRoute)}
                     className="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-[#175cd3]/30 transition-all"
                     title="View My Profile"
                 >
@@ -349,6 +348,9 @@ export default function WorkspaceHeader() {
                             {initials}
                         </div>
                     )}
+                    <span className="hidden max-w-32 truncate text-sm font-medium text-[#344054] dark:text-gray-200 sm:block">
+                        {auth.user.name}
+                    </span>
                 </Link>
             </div>
         </header>
