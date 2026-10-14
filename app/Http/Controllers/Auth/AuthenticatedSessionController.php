@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use Database\Seeders\DevelopmentQuickAccessSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ class AuthenticatedSessionController extends Controller
         $response = Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $status,
+            'demoAccounts' => $this->demoAccounts(),
         ])->toResponse($request);
 
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -45,6 +47,13 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = $request->user();
+
+        if ($user && in_array($user->role, ['hr', 'hr_employee'], true)) {
+            $user->last_login_at = now();
+            $user->save();
+        }
+
         $request->session()->regenerate();
 
         return redirect($this->dashboardRouteFor($request));
@@ -52,6 +61,21 @@ class AuthenticatedSessionController extends Controller
 
     private function dashboardRouteFor(Request $request): string
     {
+        $user = $request->user();
+        $allowedDashboards = match ($user?->role) {
+            'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => ['farmer-management-dashboard', 'farmer-registry'],
+            'inventory', 'inventory_staff' => ['inventory-dashboard'],
+            'sales', 'sales_staff' => ['sales-dashboard', 'sales-commodities'],
+            'finance', 'finance_staff' => ['finance-dashboard', 'finance-impact'],
+            'hr', 'hr_employee' => ['hr-dashboard', 'hr-workforce'],
+            default => [],
+        };
+        $preferredDashboard = data_get($user?->preferences, 'default_dashboard');
+
+        if (is_string($preferredDashboard) && in_array($preferredDashboard, $allowedDashboards, true)) {
+            return route($preferredDashboard, absolute: false);
+        }
+
         return match ($request->user()?->role) {
             'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => route('farmer-management-dashboard', absolute: false),
             'inventory', 'inventory_staff' => route('inventory-dashboard', absolute: false),
@@ -60,6 +84,20 @@ class AuthenticatedSessionController extends Controller
             'hr', 'hr_employee' => route('hr-dashboard', absolute: false),
             default => route('dashboard', absolute: false),
         };
+    }
+
+    /**
+     * Demo credentials for the development quick-access buttons.
+     *
+     * @return list<array{label: string, email: string, password: string}>
+     */
+    private function demoAccounts(): array
+    {
+        if (! app()->environment('local')) {
+            return [];
+        }
+
+        return DevelopmentQuickAccessSeeder::quickAccess();
     }
 
     /**
