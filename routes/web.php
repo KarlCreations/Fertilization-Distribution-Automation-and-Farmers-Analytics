@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\FinanceDisbursementController;
+use App\Http\Controllers\FinanceSettingsController;
+use App\Services\FinanceDashboardData;
 use App\Http\Controllers\CommodityController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FarmerController;
@@ -162,8 +165,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('sales/{sale}/restore', [SalesDashboardController::class, 'restore'])->name('sales.restore');
     });
 
-    Route::get('finance-dashboard', function (WorkspaceDashboardData $dashboardData) {
-        return Inertia::render('role-dashboard', ['role' => 'finance', ...$dashboardData->forRole('finance')]);
+    Route::get('finance-dashboard', function (FinanceDashboardData $financeData) {
+        return Inertia::render('role-dashboard', [
+            'role' => 'finance',
+            'financeData' => $financeData->snapshot(),
+        ]);
     })->middleware('role:finance,finance_staff')->name('finance-dashboard');
 
     Route::get('hr-dashboard', [HrController::class, 'dashboard'])
@@ -499,29 +505,13 @@ Route::get('inventory-warehouses', function () {
         ]);
     })->middleware('role:executive,admin,operations_director,inventory,inventory_staff,subsidy,subsidy_staff,field_operations,field_operations_staff,sales,sales_staff')->name('inventory-warehouses');
 
-    Route::get('finance-impact', function () {
-        return Inertia::render('finance-impact', [
-            'financeMetrics' => [
-                'tradeValue' => DB::table('erp_trade_contracts')->selectRaw('COALESCE(SUM(volume_mt * price_per_mt), 0) AS total')->value('total'),
-                'tradeVolume' => DB::table('erp_trade_contracts')->sum('volume_mt'),
-                'quotaAllocated' => DB::table('erp_farmer_quotas')->sum('allocated_qty'),
-                'quotaDisbursed' => DB::table('erp_farmer_quotas')->sum('disbursed_qty'),
-            ],
-            'financeRecords' => DB::table('erp_trade_contracts')
-                ->join('erp_commodities', 'erp_commodities.id', '=', 'erp_trade_contracts.commodity_id')
-                ->orderByDesc('erp_trade_contracts.id')
-                ->limit(20)
-                ->get([
-                    'erp_trade_contracts.contract_ref',
-                    'erp_trade_contracts.counterparty',
-                    'erp_trade_contracts.status',
-                    'erp_trade_contracts.contract_type',
-                    'erp_trade_contracts.volume_mt',
-                    'erp_trade_contracts.price_per_mt',
-                    'erp_commodities.name as commodity_name',
-                ]),
-        ]);
+    Route::get('finance-impact', function (FinanceDashboardData $financeData) {
+        return Inertia::render('finance-impact', $financeData->snapshot());
     })->middleware('role:executive,admin,operations_director,finance,finance_staff')->name('finance-impact');
+
+    Route::post('finance-impact/quotas/{quotaId}/disbursements', [FinanceDisbursementController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,finance,finance_staff')
+        ->name('finance-disbursements.store');
 
     Route::get('sales-commodities', function () {
         return Inertia::render('sales-commodities', [

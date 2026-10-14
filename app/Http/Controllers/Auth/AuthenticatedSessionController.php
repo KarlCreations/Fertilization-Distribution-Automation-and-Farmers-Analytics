@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Database\Seeders\DevelopmentQuickAccessSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -29,6 +31,12 @@ class AuthenticatedSessionController extends Controller
 
         $response = Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
+            'developmentAccounts' => app()->environment('local')
+                ? collect($this->developmentAccounts())->map(fn (array $account, string $key): array => [
+                    'key' => $key,
+                    'label' => $account['label'],
+                ])->values()
+                : [],
             'status' => $status,
             'demoAccounts' => $this->demoAccounts(),
         ])->toResponse($request);
@@ -57,6 +65,50 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         return redirect($this->dashboardRouteFor($request));
+    }
+
+    /**
+     * Sign in to a seeded local development account.
+     */
+    public function developmentQuickLogin(Request $request): RedirectResponse
+    {
+        abort_unless(app()->environment('local'), 404);
+
+        $validated = $request->validate([
+            'account' => ['required', 'string', 'in:finance,executive,inventory,sales,hr,subsidy,field_operations'],
+        ]);
+        $account = $this->developmentAccounts()[$validated['account']];
+
+        $user = User::firstOrCreate(
+            ['email' => $account['email']],
+            [
+                'name' => $account['name'],
+                'role' => $account['role'],
+                'password' => Str::random(64),
+                'email_verified_at' => now(),
+            ],
+        );
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+
+        return redirect($this->dashboardRouteFor($request));
+    }
+
+    /**
+     * @return array<string, array{label: string, name: string, email: string, role: string}>
+     */
+    private function developmentAccounts(): array
+    {
+        return [
+            'finance' => ['label' => 'Finance dashboard', 'name' => 'Finance Staff', 'email' => 'finance.staff@example.com', 'role' => 'finance'],
+            'executive' => ['label' => 'Executive overview', 'name' => 'Executive', 'email' => 'test@example.com', 'role' => 'executive'],
+            'inventory' => ['label' => 'Inventory staff', 'name' => 'Inventory Staff', 'email' => 'inventory.staff@example.com', 'role' => 'inventory'],
+            'sales' => ['label' => 'Sales staff', 'name' => 'Sales Staff', 'email' => 'sales.staff@example.com', 'role' => 'sales'],
+            'hr' => ['label' => 'HR employee', 'name' => 'HR Employee', 'email' => 'hr.employee@example.com', 'role' => 'hr'],
+            'subsidy' => ['label' => 'Subsidy staff', 'name' => 'Subsidy Staff', 'email' => 'subsidy.staff@example.com', 'role' => 'subsidy'],
+            'field_operations' => ['label' => 'Field operations', 'name' => 'Field Operations Staff', 'email' => 'field.operations@example.com', 'role' => 'field_operations'],
+        ];
     }
 
     private function dashboardRouteFor(Request $request): string

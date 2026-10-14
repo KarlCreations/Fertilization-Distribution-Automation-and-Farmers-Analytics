@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowRight, Eye, Leaf, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -44,7 +44,7 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
         });
     };
 
-    const signInAs = (email: string, password: string) => {
+    const signInAs = (account: string) => {
         router.post(
             route('login'),
             {

@@ -212,6 +212,7 @@ export const workspaceLinks = [
 export default function WorkspaceSidebar() {
     const { auth } = usePage<SharedData>().props;
     const visibleLinks = workspaceLinks.filter(({ roles }) => roles.includes(String(auth.user.role)));
+    const isFinanceUser = ['finance', 'finance_staff'].includes(String(auth.user.role));
 
     return (
         <>
