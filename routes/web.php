@@ -149,9 +149,14 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'inventory', ...$dashboardData->forRole('inventory')]);
     })->middleware('role:inventory,inventory_staff')->name('inventory-dashboard');
 
-    Route::get('sales-dashboard', function (WorkspaceDashboardData $dashboardData) {
-        return Inertia::render('role-dashboard', ['role' => 'sales', ...$dashboardData->forRole('sales')]);
-    })->middleware('role:sales,sales_staff')->name('sales-dashboard');
+    Route::middleware('role:executive,admin,operations_director,sales,sales_staff')->group(function (): void {
+        Route::get('sales-dashboard', [SalesDashboardController::class, 'index'])->name('sales-dashboard');
+        Route::get('sales-dashboard/export/csv', [SalesDashboardController::class, 'exportCsv'])->name('sales-dashboard.export.csv');
+        Route::post('sales', [SalesDashboardController::class, 'store'])->name('sales.store');
+        Route::put('sales/{sale}', [SalesDashboardController::class, 'update'])->name('sales.update');
+        Route::delete('sales/{sale}', [SalesDashboardController::class, 'destroy'])->name('sales.destroy');
+        Route::post('sales/{sale}/restore', [SalesDashboardController::class, 'restore'])->name('sales.restore');
+    });
 
     Route::get('finance-dashboard', function (WorkspaceDashboardData $dashboardData) {
         return Inertia::render('role-dashboard', ['role' => 'finance', ...$dashboardData->forRole('finance')]);
