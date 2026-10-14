@@ -77,7 +77,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         return match ($request->user()?->role) {
-            'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff' => route('farmer-management-dashboard', absolute: false),
+            'subsidy', 'subsidy_staff' => route('subsidy-dashboard', absolute: false),
+            'field_operations', 'field_operations_staff' => route('operations-dashboard', absolute: false),
             'inventory', 'inventory_staff' => route('inventory-dashboard', absolute: false),
             'sales', 'sales_staff' => route('sales-dashboard', absolute: false),
             'finance', 'finance_staff' => route('finance-dashboard', absolute: false),

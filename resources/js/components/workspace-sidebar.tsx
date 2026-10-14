@@ -1,5 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    ClipboardCheck,
+    ClipboardList,
+    LayoutDashboard,
+    LogOut,
     CalendarClock,
     LayoutDashboard,
     LogOut,
@@ -22,10 +26,10 @@ import { type SharedData } from '@/types';
 export const workspaceLinks = [
     { label: 'Overview', icon: LayoutDashboard, routeName: 'dashboard', roles: ['executive', 'admin', 'operations_director'] },
     {
-        label: 'Farmer management',
-        icon: Sprout,
-        routeName: 'farmer-management-dashboard',
-        roles: ['subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff'],
+        label: 'Overview',
+        icon: LayoutDashboard,
+        routeName: 'dashboard',
+        roles: ['executive', 'admin', 'operations_director'],
     },
     { label: 'My inventory dashboard', icon: Package, routeName: 'inventory-dashboard', roles: ['inventory', 'inventory_staff'] },
     {
@@ -48,11 +52,58 @@ export const workspaceLinks = [
     {
         label: 'Farmer registry',
         icon: Sprout,
-        routeName: 'farmer-registry',
-        roles: ['executive', 'admin', 'operations_director', 'subsidy', 'subsidy_staff', 'field_operations', 'field_operations_staff'],
+        routeName: 'subsidy-dashboard',
+        roles: ['subsidy', 'subsidy_staff'],
     },
     {
-        label: 'Inventory & condition',
+        label: 'Farmer Management',
+        icon: UsersRound,
+        routeName: 'farmer-registry',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+ 
+    {
+    label: 'Subsidy Allocations',
+    icon: ClipboardList,
+    routeName: 'subsidy-allocations',
+    roles: ['subsidy', 'subsidy_staff'],
+    },
+
+    
+    //disbursement
+    {
+        label: 'Disbursement Records',
+        icon: ClipboardList,
+        routeName: 'disbursement-records',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+
+    //field operations
+    {
+        label: 'Field Activities',
+        icon: ClipboardCheck,
+        routeName: 'field-activities.index',
+        roles: ['subsidy', 'subsidy_staff'],
+    },
+
+
+    // OPERATIONS
+    {
+        label: 'Operations Dashboard',
+        icon: Truck,
+        routeName: 'operations-dashboard',
+        roles: ['field_operations', 'field_operations_staff'],
+    },
+
+    // INVENTORY
+    {
+        label: 'My Inventory Dashboard',
+        icon: Package,
+        routeName: 'inventory-dashboard',
+        roles: ['inventory', 'inventory_staff'],
+    },
+    {
+        label: 'Inventory & Condition',
         icon: Package,
         routeName: 'inventory-warehouses',
         roles: [
@@ -61,25 +112,86 @@ export const workspaceLinks = [
             'operations_director',
             'inventory',
             'inventory_staff',
-            'subsidy',
-            'subsidy_staff',
-            'field_operations',
-            'field_operations_staff',
+        ],
+    },
+
+    // SALES
+    {
+        label: 'My Sales Dashboard',
+        icon: Truck,
+        routeName: 'sales-dashboard',
+        roles: ['sales', 'sales_staff'],
+    },
+    {
+        label: 'Trade Hub',
+        icon: Truck,
+        routeName: 'sales-commodities',
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
             'sales',
             'sales_staff',
         ],
     },
-    { label: 'Trade hub', icon: Truck, routeName: 'sales-commodities', roles: ['executive', 'admin', 'operations_director', 'sales', 'sales_staff'] },
+
+    // FINANCE
+    {
+        label: 'My Finance Dashboard',
+        icon: WalletCards,
+        routeName: 'finance-dashboard',
+        roles: ['finance', 'finance_staff'],
+    },
     {
         label: 'Financials',
         icon: WalletCards,
         routeName: 'finance-impact',
-        roles: ['executive', 'admin', 'operations_director', 'finance', 'finance_staff'],
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
+            'finance',
+            'finance_staff',
+        ],
     },
-    { label: 'System administration', icon: UserCog, routeName: 'system-admin', roles: ['executive', 'admin', 'operations_director'] },
-    { label: 'System settings', icon: Settings, routeName: 'system-settings', roles: ['executive', 'admin', 'operations_director'] },
+
+    // HR
     {
-        label: 'My settings',
+        label: 'My HR Dashboard',
+        icon: UsersRound,
+        routeName: 'hr-dashboard',
+        roles: ['hr', 'hr_employee'],
+    },
+    {
+        label: 'HR & Workforce',
+        icon: UsersRound,
+        routeName: 'hr-workforce',
+        roles: [
+            'executive',
+            'admin',
+            'operations_director',
+            'hr',
+            'hr_employee',
+        ],
+    },
+
+    // ADMIN
+    {
+        label: 'System Administration',
+        icon: UserCog,
+        routeName: 'system-admin',
+        roles: ['executive', 'admin', 'operations_director'],
+    },
+    {
+        label: 'System Settings',
+        icon: Settings,
+        routeName: 'system-settings',
+        roles: ['executive', 'admin', 'operations_director'],
+    },
+
+    // PERSONAL SETTINGS
+    {
+        label: 'My Settings',
         icon: Settings,
         routeName: 'employee-settings',
         roles: [
@@ -207,3 +319,4 @@ export function WorkspaceMobileNavigation() {
         </>
     );
 }
+

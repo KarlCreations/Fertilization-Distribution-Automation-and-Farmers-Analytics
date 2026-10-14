@@ -15,6 +15,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use App\Http\Controllers\DisbursementController;
+use App\Http\Controllers\FieldActivityController;
+
 
 Route::redirect('/', '/login')->name('home');
 
@@ -209,8 +213,210 @@ Route::middleware(['auth'])->group(function () {
                     'erp_farmer_quotas.disbursed_qty',
                 ]),
         ]);
-    })->middleware('role:executive,admin,operations_director,subsidy,subsidy_staff,field_operations,field_operations_staff')->name('farmer-registry');
+    }
 
+    $cycle = DB::table('erp_subsidy_cycles')
+        ->where('id', $validated['cycle_id'])
+        ->where('status', 'active')
+        ->first();
+
+    if (!$cycle) {
+        return back()->withErrors([
+            'cycle_id' => 'Please select an active subsidy cycle.',
+        ]);
+    }
+
+    $alreadyExists = DB::table('erp_farmer_quotas')
+        ->where('farmer_id', $validated['farmer_id'])
+        ->where('commodity_id', $validated['commodity_id'])
+        ->where('cycle_id', $validated['cycle_id'])
+        ->exists();
+
+    if ($alreadyExists) {
+        return back()->withErrors([
+            'farmer_id' => 'This farmer already has an allocation for this commodity and subsidy cycle.',
+        ]);
+    }
+
+    DB::table('erp_farmer_quotas')->insert([
+        'farmer_id' => $validated['farmer_id'],
+        'commodity_id' => $validated['commodity_id'],
+        'cycle_id' => $validated['cycle_id'],
+        'allocated_qty' => $validated['allocated_qty'],
+        'disbursed_qty' => 0,
+    ]);
+
+    return redirect()
+        ->route('subsidy-allocations')
+        ->with('success', 'Subsidy allocation created successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('subsidy-allocations.store');
+
+
+Route::put('subsidy-allocations/{id}', function (Request $request, int $id) {
+    $validated = $request->validate([
+        'farmer_id' => ['required', 'integer', 'exists:erp_farmers,id'],
+        'commodity_id' => ['required', 'integer', 'exists:erp_commodities,id'],
+        'cycle_id' => ['required', 'integer', 'exists:erp_subsidy_cycles,id'],
+        'allocated_qty' => ['required', 'numeric', 'min:0.01'],
+    ]);
+
+    $allocation = DB::table('erp_farmer_quotas')
+        ->where('id', $id)
+        ->first();
+
+    abort_if(!$allocation, 404, 'Allocation not found.');
+
+    /*
+     * Prevent duplicate farmer + commodity + cycle combinations.
+     */
+    $duplicateExists = DB::table('erp_farmer_quotas')
+        ->where('farmer_id', $validated['farmer_id'])
+        ->where('commodity_id', $validated['commodity_id'])
+        ->where('cycle_id', $validated['cycle_id'])
+        ->where('id', '!=', $id)
+        ->exists();
+
+    if ($duplicateExists) {
+        return back()->withErrors([
+            'farmer_id' =>
+                'This farmer already has an allocation for the selected commodity and subsidy cycle.',
+        ]);
+    }
+
+    /*
+     * Do not allow the allocated quantity to become
+     * lower than what has already been disbursed.
+     */
+    if (
+        (float) $validated['allocated_qty'] <
+        (float) $allocation->disbursed_qty
+    ) {
+        return back()->withErrors([
+            'allocated_qty' =>
+                'Allocated quantity cannot be lower than the amount already disbursed.',
+        ]);
+    }
+
+    DB::table('erp_farmer_quotas')
+        ->where('id', $id)
+        ->update([
+            'farmer_id' => $validated['farmer_id'],
+            'commodity_id' => $validated['commodity_id'],
+            'cycle_id' => $validated['cycle_id'],
+            'allocated_qty' => $validated['allocated_qty'],
+        ]);
+
+    return redirect()
+        ->route('subsidy-allocations')
+        ->with('success', 'Subsidy allocation updated successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('subsidy-allocations.update');
+
+
+Route::delete('subsidy-allocations/{id}', function (int $id) {
+    $allocation = DB::table('erp_farmer_quotas')
+        ->where('id', $id)
+        ->first();
+
+    abort_if(!$allocation, 404, 'Allocation not found.');
+
+    if ((float) $allocation->disbursed_qty > 0) {
+        return redirect()
+            ->route('subsidy-allocations')
+            ->withErrors([
+                'allocation' => 'This allocation cannot be deleted because fertilizer has already been disbursed.',
+            ]);
+    }
+
+    DB::table('erp_farmer_quotas')
+        ->where('id', $id)
+        ->delete();
+
+    return redirect()
+        ->route('subsidy-allocations')
+        ->with('success', 'Subsidy allocation deleted successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('subsidy-allocations.destroy');
+
+
+//disbursement records
+Route::get('disbursement-records', function () {
+    return Inertia::render('disbursement-records', [
+        'allocations' => DB::table('erp_farmer_quotas')
+            ->join(
+                'erp_farmers',
+                'erp_farmers.id',
+                '=',
+                'erp_farmer_quotas.farmer_id'
+            )
+            ->join(
+                'erp_commodities',
+                'erp_commodities.id',
+                '=',
+                'erp_farmer_quotas.commodity_id'
+            )
+            ->join(
+                'erp_subsidy_cycles',
+                'erp_subsidy_cycles.id',
+                '=',
+                'erp_farmer_quotas.cycle_id'
+            )
+            ->orderByDesc('erp_farmer_quotas.id')
+            ->get([
+                'erp_farmer_quotas.id',
+                'erp_farmer_quotas.farmer_id',
+                'erp_farmer_quotas.cycle_id',
+                'erp_farmer_quotas.commodity_id',
+                'erp_farmers.full_name as farmer_name',
+                'erp_farmers.national_id',
+                'erp_commodities.name as commodity_name',
+                'erp_commodities.unit as commodity_unit',
+                'erp_subsidy_cycles.name as cycle_name',
+                'erp_farmer_quotas.allocated_qty',
+                'erp_farmer_quotas.disbursed_qty',
+            ]),
+    ]);
+})->middleware('role:subsidy,subsidy_staff')->name('disbursement-records');
+
+Route::post(
+    '/disbursement-records/{id}/record',
+    [DisbursementController::class, 'record']
+)->middleware('role:subsidy,subsidy_staff')
+ ->name('disbursement-records.record');
+
+Route::get(
+    '/disbursement-records/{id}/history',
+    [DisbursementController::class, 'history']
+)->middleware('role:subsidy,subsidy_staff')
+ ->name('disbursement-records.history');
+
+
+    Route::post('farmer-registry', function (Request $request) {
+    $validated = $request->validate([
+        'national_id' => ['required', 'string', 'max:255', 'unique:erp_farmers,national_id'],
+        'full_name' => ['required', 'string', 'max:255'],
+        'phone' => ['nullable', 'string', 'max:50'],
+        'zone_id' => ['nullable', 'integer', 'exists:erp_zones,id'],
+    ]);
+
+    DB::table('erp_farmers')->insert([
+        'national_id' => $validated['national_id'],
+        'full_name' => $validated['full_name'],
+        'phone' => $validated['phone'] ?? null,
+        'zone_id' => $validated['zone_id'] ?? null,
+        'status' => 'pending_verification',
+        'biometric_verified' => false,
+        'registered_by' => $request->user()->id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return redirect()
+        ->route('farmer-registry')
+        ->with('success', 'Farmer registered successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('farmer-registry.store');
+
+
+Route::get('inventory-warehouses', function () {
+        return Inertia::render('inventory-warehouses');
     Route::get('inventory-warehouses', function () {
         return Inertia::render('inventory-warehouses', [
             'inventoryMetrics' => [
@@ -351,6 +557,81 @@ Route::middleware(['auth'])->group(function () {
             ]),
         ]);
     })->middleware('role:executive,admin,operations_director,sales,sales_staff')->name('sales-commodities');
+
+    Route::put('farmer-registry/{id}', function (Request $request, int $id) {
+    $validated = $request->validate([
+        'national_id' => [
+            'required',
+            'string',
+            'max:255',
+            'unique:erp_farmers,national_id,' . $id,
+        ],
+        'full_name' => ['required', 'string', 'max:255'],
+        'phone' => ['nullable', 'string', 'max:50'],
+        'zone_id' => ['nullable', 'integer', 'exists:erp_zones,id'],
+    ]);
+
+    $updated = DB::table('erp_farmers')
+        ->where('id', $id)
+        ->update([
+            'national_id' => $validated['national_id'],
+            'full_name' => $validated['full_name'],
+            'phone' => $validated['phone'] ?? null,
+            'zone_id' => $validated['zone_id'] ?? null,
+            'updated_at' => now(),
+        ]);
+
+    abort_if($updated === 0, 404, 'Farmer not found.');
+
+    return redirect()
+        ->route('farmer-registry')
+        ->with('success', 'Farmer information updated successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('farmer-registry.update');
+
+Route::patch('farmer-registry/{id}/verify', function (int $id) {
+    $updated = DB::table('erp_farmers')
+        ->where('id', $id)
+        ->update([
+            'status' => 'verified',
+            'biometric_verified' => true,
+            'updated_at' => now(),
+        ]);
+
+    abort_if($updated === 0, 404, 'Farmer not found.');
+
+    return redirect()
+        ->route('farmer-registry')
+        ->with('success', 'Farmer verified successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('farmer-registry.verify');
+
+Route::delete('farmer-registry/{id}', function (int $id) {
+    $farmerExists = DB::table('erp_farmers')
+        ->where('id', $id)
+        ->exists();
+
+    abort_unless($farmerExists, 404, 'Farmer not found.');
+
+    $hasQuotaRecords = DB::table('erp_farmer_quotas')
+        ->where('farmer_id', $id)
+        ->exists();
+
+    if ($hasQuotaRecords) {
+        return redirect()
+            ->route('farmer-registry')
+            ->withErrors([
+                'farmer' => 'This farmer cannot be deleted because quota records already exist.',
+            ]);
+    }
+
+    DB::table('erp_farmers')
+        ->where('id', $id)
+        ->delete();
+
+    return redirect()
+        ->route('farmer-registry')
+        ->with('success', 'Farmer deleted successfully.');
+})->middleware('role:subsidy,subsidy_staff')->name('farmer-registry.destroy');
+
 
     Route::get('hr-workforce', function () {
         return Inertia::render('hr-workforce', [

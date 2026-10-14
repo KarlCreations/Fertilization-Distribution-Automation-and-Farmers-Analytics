@@ -27,6 +27,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile settings.
      */
+    
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $request->user()->fill($request->validated());
@@ -41,6 +42,7 @@ class ProfileController extends Controller
             ? to_route('employee-settings')
             : to_route('profile.edit');
     }
+
 
     /**
      * Delete the user's account.

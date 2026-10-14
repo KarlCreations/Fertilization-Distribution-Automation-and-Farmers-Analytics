@@ -38,6 +38,7 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
         post(route('login'), {
             onFinish: () => reset('password'),
         });
@@ -46,9 +47,19 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
     const signInAs = (email: string, password: string) => {
         router.post(
             route('login'),
-            { email, password, remember: false },
             {
-                onStart: () => setData({ email, password, remember: false }),
+                email,
+                password,
+                remember: false,
+            },
+            {
+                onStart: () => {
+                    setData({
+                        email,
+                        password,
+                        remember: false,
+                    });
+                },
             },
         );
     };
@@ -61,19 +72,36 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                 <div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-[#0b6b4f] text-white shadow-sm">
                     <Leaf className="size-5" aria-hidden="true" />
                 </div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#0b6b4f] uppercase">Operations portal</p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-normal text-[#101828]">Welcome back</h1>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">Sign in to access your operations workspace.</p>
+
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#0b6b4f] uppercase">
+                    Operations portal
+                </p>
+
+                <h1 className="mt-3 text-3xl font-semibold tracking-normal text-[#101828]">
+                    Welcome back
+                </h1>
+
+                <p className="mt-2 text-sm leading-6 text-[#667085]">
+                    Sign in to access your operations workspace.
+                </p>
             </div>
 
             <form className="flex flex-col gap-5" onSubmit={submit}>
                 <div className="grid gap-5">
                     <div className="grid gap-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-[#344054]">
+                        <Label
+                            htmlFor="email"
+                            className="text-sm font-medium text-[#344054]"
+                        >
                             Email address
                         </Label>
+
                         <div className="relative">
-                            <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" aria-hidden="true" />
+                            <Mail
+                                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]"
+                                aria-hidden="true"
+                            />
+
                             <Input
                                 id="email"
                                 type="email"
@@ -82,30 +110,43 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                                 tabIndex={1}
                                 autoComplete="email"
                                 value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
+                                onChange={(e) =>
+                                    setData('email', e.target.value)
+                                }
                                 placeholder="you@organization.com"
                                 className="h-11 rounded-md border-[#d0d5dd] bg-white pl-10 text-[#101828] shadow-xs focus-visible:border-[#175cd3] focus-visible:ring-[#175cd3]/20"
                             />
                         </div>
+
                         <InputError message={errors.email} />
                     </div>
 
                     <div className="grid gap-2">
                         <div className="flex items-center gap-4">
-                            <Label htmlFor="password" className="text-sm font-medium text-[#344054]">
+                            <Label
+                                htmlFor="password"
+                                className="text-sm font-medium text-[#344054]"
+                            >
                                 Password
                             </Label>
+
                             {canResetPassword && (
-                                <TextLink href={route('password.request')} className="ml-auto text-sm font-medium text-[#175cd3]" tabIndex={5}>
+                                <TextLink
+                                    href={route('password.request')}
+                                    className="ml-auto text-sm font-medium text-[#175cd3]"
+                                    tabIndex={5}
+                                >
                                     Forgot password?
                                 </TextLink>
                             )}
                         </div>
+
                         <div className="relative">
                             <LockKeyhole
                                 className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]"
                                 aria-hidden="true"
                             />
+
                             <Input
                                 id="password"
                                 type="password"
@@ -113,12 +154,19 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                                 tabIndex={2}
                                 autoComplete="current-password"
                                 value={data.password}
-                                onChange={(e) => setData('password', e.target.value)}
+                                onChange={(e) =>
+                                    setData('password', e.target.value)
+                                }
                                 placeholder="Enter your password"
                                 className="h-11 rounded-md border-[#d0d5dd] bg-white pl-10 text-[#101828] shadow-xs focus-visible:border-[#175cd3] focus-visible:ring-[#175cd3]/20"
                             />
-                            <Eye className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#98a2b3]" aria-hidden="true" />
+
+                            <Eye
+                                className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#98a2b3]"
+                                aria-hidden="true"
+                            />
                         </div>
+
                         <InputError message={errors.password} />
                     </div>
 
@@ -128,10 +176,16 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                             name="remember"
                             tabIndex={3}
                             checked={data.remember}
-                            onCheckedChange={(checked) => setData('remember', checked === true)}
+                            onCheckedChange={(checked) =>
+                                setData('remember', checked === true)
+                            }
                             className="border-[#98a2b3] data-[state=checked]:border-[#0b6b4f] data-[state=checked]:bg-[#0b6b4f]"
                         />
-                        <Label htmlFor="remember" className="text-sm text-[#475467]">
+
+                        <Label
+                            htmlFor="remember"
+                            className="text-sm text-[#475467]"
+                        >
                             Keep me signed in
                         </Label>
                     </div>
@@ -142,9 +196,18 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                         tabIndex={4}
                         disabled={processing}
                     >
-                        {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                        {processing && (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                        )}
+
                         Sign in
-                        {!processing && <ArrowRight className="size-4" aria-hidden="true" />}
+
+                        {!processing && (
+                            <ArrowRight
+                                className="size-4"
+                                aria-hidden="true"
+                            />
+                        )}
                     </Button>
                 </div>
             </form>
@@ -169,7 +232,11 @@ export default function Login({ status, canResetPassword, demoAccounts = [] }: L
                 </div>
             )}
 
-            {status && <div className="mt-5 text-center text-sm font-medium text-[#0b6b4f]">{status}</div>}
+            {status && (
+                <div className="mt-5 text-center text-sm font-medium text-[#0b6b4f]">
+                    {status}
+                </div>
+            )}
         </AuthLayout>
     );
 }

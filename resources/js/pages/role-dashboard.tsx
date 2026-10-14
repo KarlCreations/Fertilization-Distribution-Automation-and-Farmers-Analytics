@@ -22,7 +22,7 @@ import WorkspaceHeader from '@/components/workspace-header';
 import WorkspaceSidebar from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
-type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy';
+type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy' | 'field_operations';
 
 type DashboardData = {
     metrics: {
@@ -86,6 +86,23 @@ type DashboardData = {
 };
 
 const dashboardContent: Record<Role, { title: string; description: string; metrics: string[]; panels: string[] }> = {
+    field_operations: {
+        title: 'Field Operations Dashboard',
+        description:
+            'Coordinate field visits, verify farmer and farm information, monitor fertilizer deliveries, and track field issues.',
+        metrics: [
+            "Today's Field Visits",
+            'Pending Farm Verification',
+            'Deliveries to Confirm',
+            'Open Field Issues',
+        ],
+        panels: [
+            'Upcoming Field Visits',
+            'Farmer Verification Activity',
+            'Delivery and Field Issue Monitoring',
+        ],
+    },
+        
     subsidy: {
         title: 'Farmer management dashboard',
         description:
@@ -222,6 +239,20 @@ export default function RoleDashboard({ role, dashboardData }: { role: Role; das
 
                         {/* Top KPI Cards */}
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {content.metrics.map((label, index) => {
+                                const Icon = metricIcons[index];
+                                const isPendingVerification =
+                                role === 'field_operations' &&
+                                label === 'Pending Farm Verification';
+
+                            const metricValue = isPendingVerification
+                                ? (metrics.pendingFarmVerification ?? 0)
+                                : undefined;
+                                return (
+                                    <div
+                                        key={label}
+                                        className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                                    >
                             {role === 'hr' && dashboardData ? (
                                 <>
                                     <div className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 dark:bg-gray-900">

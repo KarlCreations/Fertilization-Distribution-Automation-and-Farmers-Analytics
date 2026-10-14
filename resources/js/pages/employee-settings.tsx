@@ -1,3 +1,20 @@
+
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { type FormEventHandler, useRef } from 'react';
+import {
+    Bell,
+    CheckCircle2,
+    CircleHelp,
+    KeyRound,
+    Leaf,
+    LockKeyhole,
+    Mail,
+    Menu,
+    Search,
+    Settings,
+    SlidersHorizontal,
+    UserRound,
+} from 'lucide-react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Bell, Eye, KeyRound, Leaf, Search, Settings, UserRound } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
@@ -97,14 +114,15 @@ export default function EmployeeSettings() {
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
                     <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
-                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
-                            <Leaf className="size-4" />
+                        <span className="flex size-9 items-center justify-center rounded-lg bg-[#176b45] text-white">
+                            <Leaf className="size-5" />
                         </span>
-                        <span className="font-semibold">{systemName}</span>
+                        <span className="font-semibold tracking-tight">{systemName}</span>
                     </div>
+
                     <label className="relative mx-auto hidden max-w-md flex-1 md:block">
                         <span className="sr-only">Search settings</span>
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
+                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#82948a]" />
                         <input
                             className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm text-[#101828] outline-none placeholder:text-[#667085] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
                             placeholder="Search my settings"
@@ -120,14 +138,16 @@ export default function EmployeeSettings() {
                         </div>
                     </div>
                 </header>
+
                 <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
                     <WorkspaceSidebar />
+
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
                         <div className="mb-7">
-                            <div className="mb-2 flex gap-2 text-xs font-medium text-[#667085]">
+                            <div className="mb-2 flex gap-2 text-xs font-medium text-[#718278]">
                                 <span>Workspace</span>
                                 <span>/</span>
-                                <span className="text-[#175cd3]">My settings</span>
+                                <span className="text-[#176b45]">My settings</span>
                             </div>
                             <h1 className="text-2xl font-semibold sm:text-3xl">My settings</h1>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#475467]">
@@ -149,12 +169,85 @@ export default function EmployeeSettings() {
                         <div className="grid gap-5 md:grid-cols-2">
                             {filteredSettingsGroups.map(({ title, description, icon: Icon, action, destination }) => (
                                 <section
-                                    key={title}
-                                    className="rounded-lg border border-[#eaecf0] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                                    id="profile"
+                                    className="scroll-mt-24 rounded-xl border border-[#e1eae4] bg-white p-5 shadow-sm sm:p-6"
                                 >
-                                    <div className="flex items-start gap-3">
-                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#eff4ff] text-[#175cd3]">
-                                            <Icon className="size-4" />
+                                    <div className="mb-6 flex items-start gap-3">
+                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f0] text-[#176b45]">
+                                            <UserRound className="size-5" />
+                                        </span>
+                                        <div>
+                                            <h2 className="font-semibold">Profile & account</h2>
+                                            <p className="mt-1 text-sm text-[#718278]">
+                                                Update your name and email address.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={saveProfile} className="space-y-5">
+                                        <div>
+                                            <label htmlFor="profile-name" className="mb-2 block text-sm font-medium">
+                                                Full name
+                                            </label>
+                                            <input
+                                                id="profile-name"
+                                                value={profile.data.name}
+                                                onChange={(event) => profile.setData('name', event.target.value)}
+                                                required
+                                                autoComplete="name"
+                                                className="h-11 w-full rounded-lg border border-[#dce7df] px-3 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
+                                            />
+                                            {profile.errors.name && (
+                                                <p className="mt-1 text-sm text-red-600">{profile.errors.name}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="profile-email" className="mb-2 block text-sm font-medium">
+                                                Email address
+                                            </label>
+                                            <div className="relative">
+                                                <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#829187]" />
+                                                <input
+                                                    id="profile-email"
+                                                    type="email"
+                                                    value={profile.data.email}
+                                                    onChange={(event) => profile.setData('email', event.target.value)}
+                                                    required
+                                                    autoComplete="username"
+                                                    className="h-11 w-full rounded-lg border border-[#dce7df] pr-3 pl-10 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
+                                                />
+                                            </div>
+                                            {profile.errors.email && (
+                                                <p className="mt-1 text-sm text-red-600">{profile.errors.email}</p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-3 border-t border-[#edf1ee] pt-5">
+                                            <button
+                                                type="submit"
+                                                disabled={profile.processing}
+                                                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#176b45] px-5 text-sm font-semibold text-white transition hover:bg-[#125637] disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {profile.processing ? 'Saving...' : 'Save changes'}
+                                            </button>
+                                            {profile.recentlySuccessful && (
+                                                <span className="flex items-center gap-1.5 text-sm font-medium text-[#176b45]">
+                                                    <CheckCircle2 className="size-4" />
+                                                    Profile saved
+                                                </span>
+                                            )}
+                                        </div>
+                                    </form>
+                                </section>
+
+                                <section
+                                    id="security"
+                                    className="scroll-mt-24 rounded-xl border border-[#e1eae4] bg-white p-5 shadow-sm sm:p-6"
+                                >
+                                    <div className="mb-6 flex items-start gap-3">
+                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f0] text-[#176b45]">
+                                            <LockKeyhole className="size-5" />
                                         </span>
                                         <div>
                                             <h2 className="text-sm font-semibold text-[#101828]">{title}</h2>
