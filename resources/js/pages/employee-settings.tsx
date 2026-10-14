@@ -15,76 +15,104 @@ import {
     SlidersHorizontal,
     UserRound,
 } from 'lucide-react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { Bell, Eye, KeyRound, Leaf, Search, Settings, UserRound } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
 
-import WorkspaceSidebar from '@/components/workspace-sidebar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
+
+const settingsGroups = [
+    {
+        title: 'Profile & account',
+        description: 'Edit the name and email address used by your account.',
+        icon: UserRound,
+        action: 'Edit profile',
+        destination: 'profile',
+    },
+    {
+        title: 'Notifications',
+        description: 'Review and mark operational updates as read.',
+        icon: Bell,
+        action: 'Open notifications',
+        destination: 'notifications',
+    },
+    {
+        title: 'Security & access',
+        description: 'Change your password using your current credentials.',
+        icon: KeyRound,
+        action: 'Change password',
+        destination: 'security',
+    },
+] as const;
+
+type SettingsDialog = 'profile' | 'security' | null;
 
 export default function EmployeeSettings() {
     const { auth } = usePage<SharedData>().props;
-    const systemName = import.meta.env.VITE_APP_NAME || 'Farm ERP';
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeSetting, setActiveSetting] = useState<SettingsDialog>(null);
+    const [savedNotice, setSavedNotice] = useState('');
+    const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
+    const filteredSettingsGroups = settingsGroups.filter(({ title, description, action }) =>
+        `${title} ${description} ${action}`.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+    );
 
-    const profile = useForm({
-        name: auth.user.name,
-        email: auth.user.email,
-    });
-
-    const passwordInput = useRef<HTMLInputElement>(null);
-    const currentPasswordInput = useRef<HTMLInputElement>(null);
-
-    const password = useForm({
+    const profileForm = useForm({ name: auth.user.name, email: auth.user.email });
+    const passwordForm = useForm({
         current_password: '',
         password: '',
         password_confirmation: '',
     });
 
-    const saveProfile: FormEventHandler = (event) => {
+    function closeSetting(open: boolean) {
+        if (open) {
+            return;
+        }
+
+        setActiveSetting(null);
+        profileForm.clearErrors();
+        passwordForm.reset();
+        passwordForm.clearErrors();
+    }
+
+    function openSetting(destination: SettingsDialog) {
+        setSavedNotice('');
+        setActiveSetting(destination);
+    }
+
+    function submitProfile(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        profile.patch(route('profile.update'), {
+        profileForm.patch(route('employee-settings.profile.update'), {
             preserveScroll: true,
-        });
-    };
-
-    const savePassword: FormEventHandler = (event) => {
-        event.preventDefault();
-
-        password.put(route('password.update'), {
-            preserveScroll: true,
-            onSuccess: () => password.reset(),
-            onError: (errors) => {
-                if (errors.password) {
-                    password.reset('password', 'password_confirmation');
-                    passwordInput.current?.focus();
-                }
-
-                if (errors.current_password) {
-                    password.reset('current_password');
-                    currentPasswordInput.current?.focus();
-                }
+            onSuccess: () => {
+                setActiveSetting(null);
+                setSavedNotice('Your profile was updated.');
             },
         });
-    };
+    }
 
-    const settingsLinks = [
-        { label: 'Profile & account', href: '#profile', icon: UserRound },
-        { label: 'Security & password', href: '#security', icon: KeyRound },
-        { label: 'Notifications', href: '#notifications', icon: Bell },
-        { label: 'Workspace preferences', href: '#preferences', icon: SlidersHorizontal },
-    ];
+    function submitPassword(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        passwordForm.put(route('password.update'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                passwordForm.reset();
+                setActiveSetting(null);
+                setSavedNotice('Your password was changed.');
+            },
+        });
+    }
 
     return (
         <>
             <Head title="My settings" />
-
-            <div className="min-h-screen bg-[#f5f8f6] text-[#172b23]">
-                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#e1eae4] bg-white px-4 sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Navigation"
-                        className="flex size-9 items-center justify-center rounded-lg border border-[#dce7df] text-[#176b45] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
-
+            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                    <WorkspaceMobileNavigation />
                     <div className="flex items-center gap-2">
                         <span className="flex size-9 items-center justify-center rounded-lg bg-[#176b45] text-white">
                             <Leaf className="size-5" />
@@ -96,25 +124,16 @@ export default function EmployeeSettings() {
                         <span className="sr-only">Search settings</span>
                         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#82948a]" />
                         <input
-                            className="h-10 w-full rounded-lg border border-[#e1eae4] bg-[#f8faf8] pr-3 pl-9 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
-                            placeholder="Search settings..."
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                    const query = event.currentTarget.value.toLowerCase();
-                                    const target = settingsLinks.find((item) =>
-                                        item.label.toLowerCase().includes(query),
-                                    );
-                                    if (target) window.location.hash = target.href;
-                                }
-                            }}
+                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm text-[#101828] outline-none placeholder:text-[#667085] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                            placeholder="Search my settings"
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
                         />
                     </label>
-
-                    <div className="ml-auto flex items-center gap-3">
-                        <span className="hidden text-sm text-[#66796e] sm:block">
-                            {auth.user.name}
-                        </span>
-                        <div className="flex size-9 items-center justify-center rounded-full bg-[#dcefe2] text-sm font-semibold text-[#176b45]">
+                    <div className="ml-auto flex items-center gap-2">
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
+                        <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>
                     </div>
@@ -130,51 +149,25 @@ export default function EmployeeSettings() {
                                 <span>/</span>
                                 <span className="text-[#176b45]">My settings</span>
                             </div>
-
-                            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                                My settings
-                            </h1>
-                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66796e]">
-                                Manage your account, password, and personal workspace preferences.
+                            <h1 className="text-2xl font-semibold sm:text-3xl">My settings</h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#475467]">
+                                Manage your account, notifications, and security in focused dialogs.
                             </p>
                         </div>
-
-                        <div className="mb-7 flex items-start gap-3 rounded-xl border border-[#c8e3d1] bg-[#edf7f0] p-4">
-                            <Settings className="mt-0.5 size-5 shrink-0 text-[#176b45]" />
-                            <div>
-                                <p className="text-sm font-semibold text-[#185c3c]">
-                                    Personal workspace settings
-                                </p>
-                                <p className="mt-1 text-sm leading-5 text-[#547461]">
-                                    Changes to your profile and password are handled by the existing
-                                    account services. Organization-wide settings remain restricted
-                                    to authorized administrators.
-                                </p>
-                            </div>
+                        <div className="mb-6 flex items-center gap-3 rounded-lg border border-[#c7d7fe] bg-[#eff4ff] p-4 text-sm text-[#344054]">
+                            <Settings className="size-5 shrink-0 text-[#175cd3]" />
+                            <span>Changes are saved to your account and use the same readable colors as your workspace dashboard.</span>
                         </div>
-
-                        <div className="grid items-start gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
-                            <nav className="rounded-xl border border-[#e1eae4] bg-white p-3 shadow-sm">
-                                <p className="px-3 pb-3 pt-2 text-xs font-semibold tracking-wider text-[#829187] uppercase">
-                                    Settings menu
-                                </p>
-                                {settingsLinks.map(({ label, href, icon: Icon }, index) => (
-                                    <a
-                                        key={label}
-                                        href={href}
-                                        className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${
-                                            index === 0
-                                                ? 'bg-[#edf7f0] font-semibold text-[#176b45]'
-                                                : 'text-[#56675d] hover:bg-[#f5f8f6] hover:text-[#176b45]'
-                                        }`}
-                                    >
-                                        <Icon className="size-4 shrink-0" />
-                                        {label}
-                                    </a>
-                                ))}
-                            </nav>
-
-                            <div className="min-w-0 space-y-6">
+                        {savedNotice && (
+                            <p
+                                role="status"
+                                className="mb-5 rounded-md border border-[#a6f4c5] bg-[#ecfdf3] px-4 py-3 text-sm font-medium text-[#05603a]"
+                            >
+                                {savedNotice}
+                            </p>
+                        )}
+                        <div className="grid gap-5 md:grid-cols-2">
+                            {filteredSettingsGroups.map(({ title, description, icon: Icon, action, destination }) => (
                                 <section
                                     id="profile"
                                     className="scroll-mt-24 rounded-xl border border-[#e1eae4] bg-white p-5 shadow-sm sm:p-6"
@@ -257,134 +250,172 @@ export default function EmployeeSettings() {
                                             <LockKeyhole className="size-5" />
                                         </span>
                                         <div>
-                                            <h2 className="font-semibold">Security & password</h2>
-                                            <p className="mt-1 text-sm text-[#718278]">
-                                                Enter your current password to choose a new one.
-                                            </p>
+                                            <h2 className="text-sm font-semibold text-[#101828]">{title}</h2>
+                                            <p className="mt-1 text-xs leading-5 text-[#475467]">{description}</p>
                                         </div>
                                     </div>
-
-                                    <form onSubmit={savePassword} className="space-y-5">
-                                        <div>
-                                            <label htmlFor="current-password" className="mb-2 block text-sm font-medium">
-                                                Current password
-                                            </label>
-                                            <input
-                                                id="current-password"
-                                                ref={currentPasswordInput}
-                                                type="password"
-                                                value={password.data.current_password}
-                                                onChange={(event) => password.setData('current_password', event.target.value)}
-                                                required
-                                                autoComplete="current-password"
-                                                className="h-11 w-full rounded-lg border border-[#dce7df] px-3 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
-                                            />
-                                            {password.errors.current_password && (
-                                                <p className="mt-1 text-sm text-red-600">{password.errors.current_password}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="new-password" className="mb-2 block text-sm font-medium">
-                                                New password
-                                            </label>
-                                            <input
-                                                id="new-password"
-                                                ref={passwordInput}
-                                                type="password"
-                                                value={password.data.password}
-                                                onChange={(event) => password.setData('password', event.target.value)}
-                                                required
-                                                autoComplete="new-password"
-                                                className="h-11 w-full rounded-lg border border-[#dce7df] px-3 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
-                                            />
-                                            {password.errors.password && (
-                                                <p className="mt-1 text-sm text-red-600">{password.errors.password}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium">
-                                                Confirm new password
-                                            </label>
-                                            <input
-                                                id="confirm-password"
-                                                type="password"
-                                                value={password.data.password_confirmation}
-                                                onChange={(event) => password.setData('password_confirmation', event.target.value)}
-                                                required
-                                                autoComplete="new-password"
-                                                className="h-11 w-full rounded-lg border border-[#dce7df] px-3 text-sm outline-none transition focus:border-[#176b45] focus:ring-2 focus:ring-[#176b45]/10"
-                                            />
-                                            {password.errors.password_confirmation && (
-                                                <p className="mt-1 text-sm text-red-600">{password.errors.password_confirmation}</p>
-                                            )}
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center gap-3 border-t border-[#edf1ee] pt-5">
+                                    <div className="mt-5">
+                                        {destination === 'notifications' ? (
                                             <button
-                                                type="submit"
-                                                disabled={password.processing}
-                                                className="inline-flex h-10 items-center justify-center rounded-lg bg-[#176b45] px-5 text-sm font-semibold text-white transition hover:bg-[#125637] disabled:cursor-not-allowed disabled:opacity-60"
+                                                type="button"
+                                                onClick={() => window.dispatchEvent(new Event('workspace-notifications-open'))}
+                                                className="flex h-10 w-full items-center justify-between rounded-md border border-[#d0d5dd] px-3 text-left text-sm font-medium text-[#344054] hover:bg-[#f9fafb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#175cd3]"
                                             >
-                                                {password.processing ? 'Updating...' : 'Update password'}
+                                                <span>{action}</span>
+                                                <Eye className="size-4 text-[#667085]" />
                                             </button>
-                                            {password.recentlySuccessful && (
-                                                <span className="flex items-center gap-1.5 text-sm font-medium text-[#176b45]">
-                                                    <CheckCircle2 className="size-4" />
-                                                    Password updated
-                                                </span>
-                                            )}
-                                        </div>
-                                    </form>
-                                </section>
-
-                                <section
-                                    id="notifications"
-                                    className="scroll-mt-24 rounded-xl border border-[#e1eae4] bg-white p-5 shadow-sm sm:p-6"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f0] text-[#176b45]">
-                                            <Bell className="size-5" />
-                                        </span>
-                                        <div>
-                                            <h2 className="font-semibold">Notifications</h2>
-                                            <p className="mt-1 text-sm leading-6 text-[#718278]">
-                                                Notification preferences will be added in the next step.
-                                                We will connect them to persistent storage so your choices
-                                                remain saved after you sign out.
-                                            </p>
-                                        </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => openSetting(destination)}
+                                                className="flex h-10 w-full items-center justify-between rounded-md border border-[#d0d5dd] px-3 text-left text-sm font-medium text-[#344054] hover:bg-[#f9fafb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#175cd3]"
+                                            >
+                                                <span>{action}</span>
+                                                <Eye className="size-4 text-[#667085]" />
+                                            </button>
+                                        )}
                                     </div>
                                 </section>
-
-                                <section
-                                    id="preferences"
-                                    className="scroll-mt-24 rounded-xl border border-[#e1eae4] bg-white p-5 shadow-sm sm:p-6"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7f0] text-[#176b45]">
-                                            <SlidersHorizontal className="size-5" />
-                                        </span>
-                                        <div>
-                                            <h2 className="font-semibold">Workspace preferences</h2>
-                                            <p className="mt-1 text-sm leading-6 text-[#718278]">
-                                                Saved filters, table density, and default landing-page
-                                                options will be implemented after account settings are tested.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <div className="flex items-center gap-2 px-1 pb-4 text-xs text-[#829187]">
-                                    <CircleHelp className="size-4" />
-                                    Need access to organization-wide settings? Contact your administrator.
-                                </div>
-                            </div>
+                            ))}
+                            {filteredSettingsGroups.length === 0 && (
+                                <p className="rounded-lg border border-dashed border-[#d0d5dd] bg-white p-6 text-sm text-[#475467] md:col-span-2">
+                                    No settings match “{searchQuery}”.
+                                </p>
+                            )}
                         </div>
                     </main>
                 </div>
             </div>
+
+            <Dialog open={activeSetting !== null} onOpenChange={closeSetting}>
+                <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto border-[#d0d5dd] bg-white text-[#101828] shadow-2xl sm:max-w-lg">
+                    {activeSetting === 'profile' && (
+                        <>
+                            <div className="mb-1 flex size-10 items-center justify-center rounded-lg bg-[#eff4ff] text-[#175cd3]">
+                                <UserRound className="size-5" />
+                            </div>
+                            <DialogTitle className="text-[#101828]">Profile & account</DialogTitle>
+                            <DialogDescription className="text-[#475467]">Update the name and email address saved on your account.</DialogDescription>
+                            <form onSubmit={submitProfile} className="grid gap-4">
+                                <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+                                    Full name
+                                    <input
+                                        required
+                                        maxLength={255}
+                                        autoComplete="name"
+                                        value={profileForm.data.name}
+                                        onChange={(event) => profileForm.setData('name', event.target.value)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#101828] outline-none placeholder:text-[#667085] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                                    />
+                                    {profileForm.errors.name && <span className="text-xs font-normal text-[#b42318]">{profileForm.errors.name}</span>}
+                                </label>
+                                <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+                                    Email address
+                                    <input
+                                        required
+                                        type="email"
+                                        maxLength={255}
+                                        autoComplete="email"
+                                        value={profileForm.data.email}
+                                        onChange={(event) => profileForm.setData('email', event.target.value)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#101828] outline-none placeholder:text-[#667085] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                                    />
+                                    {profileForm.errors.email && (
+                                        <span className="text-xs font-normal text-[#b42318]">{profileForm.errors.email}</span>
+                                    )}
+                                </label>
+                                <DialogFooter className="gap-2 border-t border-[#eaecf0] pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => closeSetting(false)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] px-4 text-sm font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={profileForm.processing}
+                                        className="h-10 rounded-md bg-[#175cd3] px-4 text-sm font-semibold text-white hover:bg-[#1849a9] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {profileForm.processing ? 'Saving…' : 'Save profile'}
+                                    </button>
+                                </DialogFooter>
+                            </form>
+                        </>
+                    )}
+
+                    {activeSetting === 'security' && (
+                        <>
+                            <div className="mb-1 flex size-10 items-center justify-center rounded-lg bg-[#eff4ff] text-[#175cd3]">
+                                <KeyRound className="size-5" />
+                            </div>
+                            <DialogTitle className="text-[#101828]">Security & access</DialogTitle>
+                            <DialogDescription className="text-[#475467]">
+                                Enter your current password, then choose and confirm a new password.
+                            </DialogDescription>
+                            <form onSubmit={submitPassword} className="grid gap-4">
+                                <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+                                    Current password
+                                    <input
+                                        required
+                                        type="password"
+                                        autoComplete="current-password"
+                                        value={passwordForm.data.current_password}
+                                        onChange={(event) => passwordForm.setData('current_password', event.target.value)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#101828] outline-none focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                                    />
+                                    {passwordForm.errors.current_password && (
+                                        <span className="text-xs font-normal text-[#b42318]">{passwordForm.errors.current_password}</span>
+                                    )}
+                                </label>
+                                <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+                                    New password
+                                    <input
+                                        required
+                                        minLength={8}
+                                        type="password"
+                                        autoComplete="new-password"
+                                        value={passwordForm.data.password}
+                                        onChange={(event) => passwordForm.setData('password', event.target.value)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#101828] outline-none focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                                    />
+                                    {passwordForm.errors.password && (
+                                        <span className="text-xs font-normal text-[#b42318]">{passwordForm.errors.password}</span>
+                                    )}
+                                </label>
+                                <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+                                    Confirm new password
+                                    <input
+                                        required
+                                        minLength={8}
+                                        type="password"
+                                        autoComplete="new-password"
+                                        value={passwordForm.data.password_confirmation}
+                                        onChange={(event) => passwordForm.setData('password_confirmation', event.target.value)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#101828] outline-none focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                                    />
+                                </label>
+                                <DialogFooter className="gap-2 border-t border-[#eaecf0] pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => closeSetting(false)}
+                                        className="h-10 rounded-md border border-[#d0d5dd] px-4 text-sm font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={passwordForm.processing}
+                                        className="h-10 rounded-md bg-[#175cd3] px-4 text-sm font-semibold text-white hover:bg-[#1849a9] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {passwordForm.processing ? 'Updating…' : 'Update password'}
+                                    </button>
+                                </DialogFooter>
+                            </form>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

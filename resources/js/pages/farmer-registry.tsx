@@ -6,30 +6,141 @@ import {
     Edit3,
     Leaf,
     Menu,
+    ClipboardList,
+    Download,
+    FileUp,
+    Fingerprint,
+    LayoutDashboard,
+    Leaf,
+    LogOut,
+    Map,
+    MapPinned,
+    Package,
     Plus,
     Search,
     ShieldCheck,
     Trash2,
     UserPlus,
+    Sprout,
+    Truck,
     UsersRound,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
-import WorkspaceSidebar from '@/components/workspace-sidebar';
+import CrudManager from '@/components/crud-manager';
+import WorkspaceHelpButton from '@/components/workspace-help-button';
+import WorkspaceNotifications from '@/components/workspace-notifications';
+import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
 import { type SharedData } from '@/types';
 
-type Farmer = {
-    id: number;
-    national_id: string;
-    full_name: string;
-    phone: string | null;
-    zone_id: number | null;
-    zone_name: string | null;
-    status: string;
-    biometric_verified: boolean;
-    created_at: string;
-};
+const metricDefinitions = [
+    {
+        key: 'registeredFarmers',
+        label: 'Registered farmers',
+        icon: UsersRound,
+        tone: 'bg-[#eff8ff] text-[#175cd3]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'quotaDisbursed',
+        label: 'Fertilizer quota disbursed',
+        icon: Package,
+        tone: 'bg-[#ecfdf3] text-[#067647]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
+    {
+        key: 'activeQuotaRecords',
+        label: 'Active quota records',
+        icon: ClipboardList,
+        tone: 'bg-[#f4f3ff] text-[#6938ef]',
+        format: (value: number) => value.toLocaleString(),
+    },
+    {
+        key: 'quotaAllocated',
+        label: 'Allocated fertilizer quota',
+        icon: WalletCards,
+        tone: 'bg-[#fffaeb] text-[#b54708]',
+        format: (value: number) => `${value.toLocaleString()} MT`,
+    },
+];
+
+function AppNavigation() {
+    return (
+        <aside className="hidden min-h-[calc(100vh-4rem)] border-r border-[#eaecf0] bg-white p-3 lg:block">
+            <p className="px-3 pt-3 pb-2 text-[10px] font-semibold tracking-[0.12em] text-[#98a2b3] uppercase">Workspace</p>
+            <nav className="grid gap-1" aria-label="Primary navigation">
+                <Link
+                    href={route('dashboard')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <LayoutDashboard className="size-4" />
+                    Overview
+                </Link>
+                <Link
+                    href={route('farmer-registry')}
+                    className="flex h-10 items-center gap-3 rounded-md bg-[#eff4ff] px-3 text-sm font-medium text-[#175cd3]"
+                >
+                    <Sprout className="size-4" />
+                    Farmer registry
+                </Link>
+                <Link
+                    href={route('inventory-warehouses')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Package className="size-4" />
+                    Inventory
+                </Link>
+                <Link
+                    href={route('sales-commodities')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Truck className="size-4" />
+                    Trade hub
+                </Link>
+                <Link
+                    href={route('finance-impact')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <WalletCards className="size-4" />
+                    Financials
+                </Link>
+                <Link
+                    href={route('hr-workforce')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <UsersRound className="size-4" />
+                    HR & workforce
+                </Link>
+                <Link
+                    href={route('system-admin')}
+                    className="flex h-10 items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Settings className="size-4" />
+                    System administration
+                </Link>
+            </nav>
+            <div className="mt-7 border-t border-[#eaecf0] pt-5">
+                <Link
+                    href={route('system-settings')}
+                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <Settings className="size-4" />
+                    System settings
+                </Link>
+                <Link
+                    href={route('logout')}
+                    method="post"
+                    as="button"
+                    className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-[#475467] hover:bg-[#f9fafb]"
+                >
+                    <LogOut className="size-4" />
+                    Sign out
+                </Link>
+            </div>
+        </aside>
+    );
+}
 
 type Zone = {
     id: number;
@@ -53,164 +164,87 @@ type FarmerRegistryProps = SharedData & {
 };
 
 type FarmerFormData = {
+type QuotaLedgerEntry = {
+    id: number;
+    farmer_id: number;
+    cycle_id: number;
+    commodity_id: number;
+    farmer_name: string;
     national_id: string;
     full_name: string;
     phone: string;
     zone_id: string;
 };
 
-const inputClass =
-    'form-input h-11 w-full rounded-lg border border-[#d5e3d9] bg-white px-3 text-sm text-[#203b2b] outline-none transition placeholder:text-[#98a99d] focus:border-[#176b45] focus:ring-4 focus:ring-[#176b45]/10';
+type FarmerRecord = {
+    id: number;
+    national_id: string;
+    full_name: string;
+    phone: string | null;
+    zone_id: number | null;
+    status: string;
+    biometric_verified: boolean;
+    zone_name: string | null;
+};
 
 export default function FarmerRegistry({
     registryMetrics,
+    quotaLedger,
     farmers,
     zones,
-}: FarmerRegistryProps) {
-    const { auth, flash, errors } = usePage<FarmerRegistryProps>().props;
+    quotaFarmers,
+    quotaCommodities,
+    subsidyCycles,
+}: {
+    registryMetrics: Record<string, number>;
+    quotaLedger: QuotaLedgerEntry[];
+    farmers: FarmerRecord[];
+    zones: { id: number; name: string }[];
+    quotaFarmers: { id: number; full_name: string; national_id: string }[];
+    quotaCommodities: { id: number; name: string; grade: string | null }[];
+    subsidyCycles: { id: number; name: string }[];
+}) {
+    const { auth } = usePage<SharedData>().props;
+    const [farmerSearch, setFarmerSearch] = useState('');
+    const [farmerStatusFilter, setFarmerStatusFilter] = useState('all');
+    const [farmerZoneFilter, setFarmerZoneFilter] = useState('all');
+    const systemName = import.meta.env.VITE_APP_NAME || 'Your System Name';
+    const filteredFarmers = farmers.filter((farmer) => {
+        const matchesStatus = farmerStatusFilter === 'all' || farmer.status === farmerStatusFilter;
+        const matchesZone = farmerZoneFilter === 'all' || String(farmer.zone_id ?? '') === farmerZoneFilter;
+        const searchableText = [farmer.full_name, farmer.national_id, farmer.phone ?? '', farmer.zone_name ?? ''].join(' ').toLowerCase();
 
-    const systemName =
-        import.meta.env.VITE_APP_NAME || 'Fertilization Distribution ERP';
-
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [showForm, setShowForm] = useState(false);
-    const [editingFarmer, setEditingFarmer] = useState<Farmer | null>(null);
-    const [deleteFarmer, setDeleteFarmer] = useState<Farmer | null>(null);
-
-    const {
-        data,
-        setData,
-        post,
-        put,
-        patch,
-        delete: destroy,
-        processing,
-        reset,
-        errors: formErrors,
-    } = useForm<FarmerFormData>({
-        national_id: '',
-        full_name: '',
-        phone: '',
-        zone_id: '',
+        return matchesStatus && matchesZone && searchableText.includes(farmerSearch.trim().toLowerCase());
     });
 
-    const filteredFarmers = useMemo(() => {
-        const searchValue = search.trim().toLowerCase();
-
-        return farmers.filter((farmer) => {
-            const matchesSearch =
-                searchValue === '' ||
-                farmer.full_name.toLowerCase().includes(searchValue) ||
-                farmer.national_id.toLowerCase().includes(searchValue) ||
-                (farmer.phone ?? '').toLowerCase().includes(searchValue) ||
-                (farmer.zone_name ?? '').toLowerCase().includes(searchValue);
-
-            const matchesStatus =
-                statusFilter === 'all' ||
-                (statusFilter === 'pending' &&
-                    farmer.status === 'pending_verification') ||
-                (statusFilter === 'verified' && farmer.biometric_verified);
-
-            return matchesSearch && matchesStatus;
-        });
-    }, [farmers, search, statusFilter]);
-
-    const openAddForm = () => {
-        setEditingFarmer(null);
-        reset();
-        setShowForm(true);
-    };
-
-    const openEditForm = (farmer: Farmer) => {
-        setEditingFarmer(farmer);
-
-        setData({
-            national_id: farmer.national_id,
-            full_name: farmer.full_name,
-            phone: farmer.phone ?? '',
-            zone_id: farmer.zone_id ? String(farmer.zone_id) : '',
-        });
-
-        setShowForm(true);
-    };
-
-    const closeForm = () => {
-        if (processing) {
-            return;
-        }
-
-        setShowForm(false);
-        setEditingFarmer(null);
-        reset();
-    };
-
-    const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        if (editingFarmer) {
-            put(route('farmer-registry.update', editingFarmer.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setShowForm(false);
-                    setEditingFarmer(null);
-                    reset();
-                },
-            });
-
-            return;
-        }
-
-        post(route('farmer-registry.store'), {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowForm(false);
-                reset();
-            },
-        });
-    };
-
-    const verifyFarmer = (farmer: Farmer) => {
-        if (processing) {
-            return;
-        }
-
-        patch(route('farmer-registry.verify', farmer.id), {
-            preserveScroll: true,
-        });
-    };
-
-    const confirmDelete = () => {
-        if (!deleteFarmer || processing) {
-            return;
-        }
-
-        destroy(route('farmer-registry.destroy', deleteFarmer.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                setDeleteFarmer(null);
-            },
-        });
-    };
+    function exportFarmers() {
+        const headers = ['National ID', 'Full name', 'Phone', 'Zone', 'Status', 'Biometric verified'];
+        const rows = filteredFarmers.map((farmer) => [
+            farmer.national_id,
+            farmer.full_name,
+            farmer.phone ?? '',
+            farmer.zone_name ?? '',
+            farmer.status,
+            farmer.biometric_verified ? 'Yes' : 'No',
+        ]);
+        const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const download = document.createElement('a');
+        download.href = url;
+        download.download = 'farmer-registry.csv';
+        download.click();
+        URL.revokeObjectURL(url);
+    }
 
     return (
         <>
-            <Head title="Farmer Management" />
-
-            <div className="min-h-screen bg-[#f4f8f5] text-[#172b21]">
-                {/* Header */}
-                <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[#e0ebe3] bg-white/95 px-4 shadow-sm backdrop-blur-md sm:px-6">
-                    <button
-                        type="button"
-                        aria-label="Open navigation"
-                        className="flex size-9 items-center justify-center rounded-lg border border-[#d5e3d9] text-[#42624d] transition hover:bg-[#f0f7f2] lg:hidden"
-                    >
-                        <Menu className="size-4" />
-                    </button>
-
-                    <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#176b45] text-white shadow-sm">
-                            <Leaf className="size-5" />
+            <Head title="Farmer registry" />
+            <div className="min-h-screen bg-[#f6f8fb] text-[#101828]">
+                <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#eaecf0] bg-white px-4 sm:px-6">
+                    <WorkspaceMobileNavigation />
+                    <div className="flex items-center gap-2">
+                        <span className="flex size-8 items-center justify-center rounded-md bg-[#0b6b4f] text-white">
+                            <Leaf className="size-4" />
                         </span>
 
                         <div className="min-w-0">
@@ -222,26 +256,20 @@ export default function FarmerRegistry({
                             </span>
                         </div>
                     </div>
-
+                    <label className="relative mx-auto hidden max-w-md flex-1 md:block">
+                        <span className="sr-only">Search registry</span>
+                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a2b3]" />
+                        <input
+                            className="h-9 w-full rounded-md border border-[#eaecf0] bg-[#f9fafb] pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3] focus:border-[#175cd3] focus:ring-2 focus:ring-[#175cd3]/15"
+                            placeholder="Search registry"
+                            value={farmerSearch}
+                            onChange={(event) => setFarmerSearch(event.target.value)}
+                        />
+                    </label>
                     <div className="ml-auto flex items-center gap-2">
-                        <button
-                            type="button"
-                            aria-label="Notifications"
-                            className="relative flex size-9 items-center justify-center rounded-lg text-[#42624d] transition hover:bg-[#f0f7f2]"
-                        >
-                            <Bell className="size-[18px]" />
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-[#dc5148]" />
-                        </button>
-
-                        <button
-                            type="button"
-                            aria-label="Help"
-                            className="hidden size-9 items-center justify-center rounded-lg text-[#42624d] transition hover:bg-[#f0f7f2] sm:flex"
-                        >
-                            <CircleHelp className="size-[18px]" />
-                        </button>
-
-                        <div className="ml-1 flex size-9 items-center justify-center rounded-full border-2 border-white bg-[#d9f1df] text-xs font-bold text-[#176b45] shadow-sm ring-1 ring-[#c4e4ce]">
+                        <WorkspaceNotifications />
+                        <WorkspaceHelpButton />
+                        <div className="flex size-8 items-center justify-center rounded-full bg-[#d1fadf] text-xs font-semibold text-[#067647]">
                             {auth.user.name.slice(0, 2).toUpperCase()}
                         </div>
                     </div>
@@ -251,8 +279,7 @@ export default function FarmerRegistry({
                     <WorkspaceSidebar />
 
                     <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-                        {/* Page heading */}
-                        <div className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="mb-7 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                             <div>
                                 <div className="mb-3 flex items-center gap-2 text-xs font-medium">
                                     <span className="rounded-md bg-[#e7f3e9] px-2 py-1 text-[#42624d]">
@@ -273,15 +300,33 @@ export default function FarmerRegistry({
                                     records for subsidy distribution.
                                 </p>
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={openAddForm}
-                                className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#176b45] px-5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#125638] hover:shadow-md"
-                            >
-                                <Plus className="size-4" />
-                                Add Farmer
-                            </button>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    disabled
+                                    title="No GIS import provider is configured."
+                                    className="flex h-9 cursor-not-allowed items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054] opacity-50"
+                                >
+                                    <FileUp className="size-4" />
+                                    Import GIS
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={exportFarmers}
+                                    className="flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054]"
+                                >
+                                    <Download className="size-4" />
+                                    Export
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => document.getElementById('farmer-crud')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                    className="flex h-9 items-center gap-2 rounded-md bg-[#175cd3] px-3 text-sm font-semibold text-white hover:bg-[#1849a9]"
+                                >
+                                    <Plus className="size-4" />
+                                    Register farmer
+                                </button>
+                            </div>
                         </div>
 
                         {/* Success message */}
@@ -358,76 +403,87 @@ export default function FarmerRegistry({
                                     <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#98a99d]" />
 
                                     <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(event) =>
-                                            setSearch(event.target.value)
-                                        }
-                                        className="h-11 w-full rounded-lg border border-[#d5e3d9] bg-[#fcfefc] pr-3 pl-9 text-sm outline-none transition placeholder:text-[#98a99d] focus:border-[#176b45] focus:ring-4 focus:ring-[#176b45]/10"
-                                        placeholder="Search name, national ID, phone, or zone..."
+                                        className="h-10 w-full rounded-md border border-[#d0d5dd] bg-white pr-3 pl-9 text-sm outline-none placeholder:text-[#98a2b3]"
+                                        placeholder="Search farmer name, registry ID, or phone"
+                                        value={farmerSearch}
+                                        onChange={(event) => setFarmerSearch(event.target.value)}
                                     />
                                 </label>
-
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) =>
-                                        setStatusFilter(event.target.value)
-                                    }
-                                    className="h-11 rounded-lg border border-[#d5e3d9] bg-white px-3 text-sm text-[#344b3b] outline-none transition focus:border-[#176b45] focus:ring-4 focus:ring-[#176b45]/10"
-                                >
-                                    <option value="all">All farmers</option>
-                                    <option value="pending">
-                                        Pending verification
-                                    </option>
-                                    <option value="verified">Verified</option>
-                                </select>
-                            </div>
-
-                            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#edf2ee] pt-3">
-                                <p className="text-xs text-[#829488]">
-                                    Showing{' '}
-                                    <span className="font-semibold text-[#42624d]">
-                                        {filteredFarmers.length}
-                                    </span>{' '}
-                                    of{' '}
-                                    <span className="font-semibold text-[#42624d]">
-                                        {farmers.length}
-                                    </span>{' '}
-                                    farmers
-                                </p>
-
-                                {(search || statusFilter !== 'all') && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSearch('');
-                                            setStatusFilter('all');
-                                        }}
-                                        className="text-xs font-semibold text-[#176b45] transition hover:text-[#125638]"
+                                <div className="flex flex-wrap gap-2">
+                                    <label className="sr-only" htmlFor="farmer-status-filter">
+                                        Filter farmers by status
+                                    </label>
+                                    <select
+                                        id="farmer-status-filter"
+                                        value={farmerStatusFilter}
+                                        onChange={(event) => setFarmerStatusFilter(event.target.value)}
+                                        className="h-9 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
                                     >
-                                        Clear filters
-                                    </button>
-                                )}
+                                        <option value="all">All statuses</option>
+                                        <option value="pending_verification">Pending verification</option>
+                                        <option value="verified">Verified</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                    <label className="sr-only" htmlFor="farmer-zone-filter">
+                                        Filter farmers by service zone
+                                    </label>
+                                    <select
+                                        id="farmer-zone-filter"
+                                        value={farmerZoneFilter}
+                                        onChange={(event) => setFarmerZoneFilter(event.target.value)}
+                                        className="h-9 rounded-md bg-[#f2f4f7] px-3 text-xs font-medium text-[#475467]"
+                                    >
+                                        <option value="all">All service zones</option>
+                                        {zones.map((zone) => (
+                                            <option key={zone.id} value={zone.id}>
+                                                {zone.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
+                            <p className="mt-4 border-t border-[#eaecf0] pt-4 text-xs text-[#98a2b3]">
+                                Crop, parcel-size, and bank filters require data sources that are not currently configured.
+                            </p>
                         </section>
-
-                        {/* Farmer table */}
-                        <section className="mt-5 overflow-hidden rounded-xl border border-[#e0ebe3] bg-white shadow-sm">
-                            <div className="flex flex-col gap-3 border-b border-[#e0ebe3] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#eaf7ef] text-[#176b45]">
-                                        <UsersRound className="size-5" />
-                                    </div>
-
-                                    <div>
-                                        <h2 className="text-sm font-bold text-[#234832]">
-                                            Farmer Records
-                                        </h2>
-                                        <p className="mt-1 text-xs text-[#829488]">
-                                            Manage registered farmers and their
-                                            verification status.
-                                        </p>
-                                    </div>
+                        <CrudManager
+                            id="farmer-crud"
+                            title="Farmer"
+                            records={filteredFarmers}
+                            totalRecordCount={farmers.length}
+                            emptyMessage={farmers.length === 0 ? 'No farmer records yet.' : 'No farmers match the current search and filters.'}
+                            createUrl={route('farmers.store')}
+                            updateUrl={(id) => route('farmers.update', { farmer: id })}
+                            deleteUrl={(id) => route('farmers.destroy', { farmer: id })}
+                            fields={[
+                                { name: 'national_id', label: 'National ID', required: true },
+                                { name: 'full_name', label: 'Full name', required: true },
+                                { name: 'phone', label: 'Phone number', displayName: 'phone' },
+                                {
+                                    name: 'zone_id',
+                                    label: 'Service zone',
+                                    type: 'select',
+                                    displayName: 'zone_name',
+                                    options: zones.map((zone) => ({ label: zone.name, value: zone.id })),
+                                },
+                                {
+                                    name: 'status',
+                                    label: 'Verification status',
+                                    type: 'select',
+                                    required: true,
+                                    options: [
+                                        { label: 'Pending verification', value: 'pending_verification' },
+                                        { label: 'Verified', value: 'verified' },
+                                        { label: 'Suspended', value: 'suspended' },
+                                    ],
+                                },
+                                { name: 'biometric_verified', label: 'Biometric verified', type: 'checkbox' },
+                            ]}
+                        />
+                        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                            <Panel title="Farmer quota and voucher ledger" icon={ClipboardList} className="overflow-hidden">
+                                <div className="border-t border-[#eaecf0] px-5 py-3 text-xs text-[#667085]">
+                                    Live quota and voucher records from the ERP database.
                                 </div>
 
                                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#dcebe0] bg-[#f5faf6] px-3 py-1.5 text-xs font-semibold text-[#42624d]">
@@ -607,31 +663,113 @@ export default function FarmerRegistry({
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                            ) : (
+                                                quotaLedger.map((entry) => {
+                                                    const allocated = Number(entry.allocated_qty);
+                                                    const disbursed = Number(entry.disbursed_qty);
+                                                    const balance = Math.max(allocated - disbursed, 0);
 
-                        <p className="mt-5 text-center text-xs text-[#98a99d]">
-                            Farmer Management · Fertilization Distribution ERP
-                        </p>
-                    </main>
-                </div>
-
-                {/* Add/Edit modal */}
-                {showForm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#102c1d]/50 p-4 backdrop-blur-sm">
-                        <div className="my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[#e0ebe3] bg-white shadow-2xl">
-                            <div className="flex items-center justify-between border-b border-[#e0ebe3] bg-[#f8fbf8] px-5 py-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#e3f3e7] text-[#176b45]">
-                                        {editingFarmer ? (
-                                            <Edit3 className="size-5" />
-                                        ) : (
-                                            <UserPlus className="size-5" />
-                                        )}
+                                                    return (
+                                                        <tr key={entry.id} className="text-xs text-[#475467]">
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#101828]">{entry.farmer_name}</p>
+                                                                <p className="mt-1 text-[#98a2b3]">{entry.national_id}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#344054]">{entry.commodity_name}</p>
+                                                                <p className="mt-1 text-[#98a2b3]">{entry.cycle_name}</p>
+                                                            </td>
+                                                            <td className="px-5 py-4">{allocated.toLocaleString()} MT</td>
+                                                            <td className="px-5 py-4">
+                                                                <p className="font-medium text-[#175cd3]">
+                                                                    {disbursed.toLocaleString()} MT disbursed
+                                                                </p>
+                                                                <p className="mt-1 text-[#667085]">{balance.toLocaleString()} MT remaining</p>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-[#eaecf0] px-5 py-4 text-xs text-[#98a2b3]">
+                                    <span>{quotaLedger.length} live quota records shown.</span>
+                                    <div className="flex gap-1">
+                                        <span className="flex size-7 items-center justify-center rounded bg-[#f2f4f7]">1</span>
+                                        <span className="flex size-7 items-center justify-center rounded bg-[#f9fafb]">2</span>
+                                    </div>
+                                </div>
+                                <CrudManager
+                                    id="quota-crud"
+                                    title="Farmer quota"
+                                    records={quotaLedger}
+                                    createUrl={route('farmer-quotas.store')}
+                                    updateUrl={(id) => route('farmer-quotas.update', { farmerQuota: id })}
+                                    deleteUrl={(id) => route('farmer-quotas.destroy', { farmerQuota: id })}
+                                    fields={[
+                                        {
+                                            name: 'farmer_id',
+                                            label: 'Farmer',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'farmer_name',
+                                            options: quotaFarmers.map((farmer) => ({
+                                                label: `${farmer.full_name} · ${farmer.national_id}`,
+                                                value: farmer.id,
+                                            })),
+                                        },
+                                        {
+                                            name: 'cycle_id',
+                                            label: 'Subsidy cycle',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'cycle_name',
+                                            options: subsidyCycles.map((cycle) => ({ label: cycle.name, value: cycle.id })),
+                                        },
+                                        {
+                                            name: 'commodity_id',
+                                            label: 'Commodity',
+                                            type: 'select',
+                                            required: true,
+                                            displayName: 'commodity_name',
+                                            options: quotaCommodities.map((commodity) => ({
+                                                label: `${commodity.name}${commodity.grade ? ` · ${commodity.grade}` : ''}`,
+                                                value: commodity.id,
+                                            })),
+                                        },
+                                        { name: 'allocated_qty', label: 'Allocated quantity (MT)', type: 'number', required: true },
+                                        { name: 'disbursed_qty', label: 'Disbursed quantity (MT)', type: 'number', required: true },
+                                    ]}
+                                />
+                            </Panel>
+                            <div className="grid content-start gap-4">
+                                <Panel title="Regional cadastral GIS" icon={MapPinned}>
+                                    <div className="px-5 pb-5">
+                                        <div
+                                            className="relative h-48 overflow-hidden rounded-md bg-[#e9f7ef]"
+                                            style={{
+                                                backgroundImage:
+                                                    'linear-gradient(30deg, transparent 47%, rgba(23,92,211,.18) 48%, rgba(23,92,211,.18) 52%, transparent 53%), linear-gradient(90deg, rgba(11,107,79,.10) 1px, transparent 1px), linear-gradient(rgba(11,107,79,.10) 1px, transparent 1px)',
+                                                backgroundSize: '100% 100%, 28px 28px, 28px 28px',
+                                            }}
+                                        >
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="rounded-md bg-white px-3 py-2 text-xs font-medium text-[#475467] shadow-sm">
+                                                    GIS map ready for parcels
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-2 gap-3">
+                                            <div className="rounded-md bg-[#f5f8ff] p-3">
+                                                <p className="text-xs text-[#667085]">Registry sync</p>
+                                                <div className="mt-3 h-5 w-12 animate-pulse rounded bg-[#dbeafe]" />
+                                            </div>
+                                            <div className="rounded-md bg-[#f5f8ff] p-3">
+                                                <p className="text-xs text-[#667085]">Parcel coverage</p>
+                                                <div className="mt-3 h-5 w-12 animate-pulse rounded bg-[#dbeafe]" />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div>
