@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\WorkspaceDashboardData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,7 @@ class HrController extends Controller
     /**
      * Display the HR operations dashboard.
      */
-    public function dashboard(): Response
+    public function dashboard(WorkspaceDashboardData $dashboardData): Response
     {
         $totalEmployees = DB::table('erp_employees')->count();
         $activeEmployees = DB::table('erp_employees')->where('is_active', true)->count();
@@ -118,8 +119,12 @@ class HrController extends Controller
         $zones = DB::table('erp_zones')->get(['id', 'name', 'zone_no']);
         $depots = DB::table('erp_depots')->get(['id', 'name', 'code']);
 
+        $roleData = $dashboardData->forRole('hr');
+
         return Inertia::render('role-dashboard', [
             'role' => 'hr',
+            'metrics' => $roleData['metrics'],
+            'records' => $roleData['records'],
             'dashboardData' => [
                 'metrics' => [
                     'workforceRoster' => $totalEmployees,
@@ -143,6 +148,7 @@ class HrController extends Controller
                 'zones' => $zones,
                 'depots' => $depots,
             ],
+            'roleCharts' => $roleData['roleCharts'],
         ]);
     }
 
@@ -710,6 +716,14 @@ class HrController extends Controller
         return Inertia::render('hr-profile', [
             'profile' => $this->profilePayload(),
         ]);
+    }
+
+    /**
+     * Show the generic employee settings page.
+     */
+    public function settings(): Response
+    {
+        return Inertia::render('employee-settings');
     }
 
     /**

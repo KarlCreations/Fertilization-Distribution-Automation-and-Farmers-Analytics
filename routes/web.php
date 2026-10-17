@@ -20,6 +20,8 @@ Route::redirect('/', '/login')->name('home');
 
 use App\Http\Controllers\HrAuthController;
 use App\Http\Controllers\HrController;
+use App\Http\Controllers\SiloSensorReadingController;
+use App\Http\Controllers\WeighbridgeSlipController;
 
 Route::get('hr-login', [HrAuthController::class, 'create'])->name('hr-login');
 
@@ -90,6 +92,55 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:executive,admin,operations_director,hr,hr_employee')
         ->name('hr.settings.update');
 
+    Route::get('hr-settings', [HrController::class, 'hrSettings'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-settings');
+
+    Route::post('hr/settings/notifications', [HrController::class, 'updateNotificationPreferences'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.settings.notifications');
+
+    Route::get('hr-attendance-leave', [HrController::class, 'attendanceLeave'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-attendance-leave');
+
+    Route::post('hr/attendance', [HrController::class, 'storeDailyAttendance'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.attendance.store');
+
+    Route::get('hr-profile', [HrController::class, 'profile'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile');
+
+    Route::patch('hr-profile', [HrController::class, 'updateProfile'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.update');
+
+    Route::put('hr-profile/password', [HrController::class, 'updatePassword'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.password.update');
+
+    Route::post('hr-profile/photo', [HrController::class, 'updateProfilePhoto'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.photo.store');
+
+    Route::delete('hr-profile/photo', [HrController::class, 'removeProfilePhoto'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-profile.photo.destroy');
+
+    Route::post('hr/employees', [HrController::class, 'storeEmployee'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.employees.store');
+
+    Route::post('hr/staffing-actions', [HrController::class, 'storeStaffingAction'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.staffing-actions.store');
+
+    Route::post('hr/leave-requests/{id}/review', [HrController::class, 'reviewLeaveRequest'])
+        ->whereNumber('id')
+        ->middleware('role:hr,hr_employee')
+        ->name('hr.leave-requests.review');
+
     Route::get('inventory-dashboard', function (WorkspaceDashboardData $dashboardData) {
         return Inertia::render('role-dashboard', ['role' => 'inventory', ...$dashboardData->forRole('inventory')]);
     })->middleware('role:inventory,inventory_staff')->name('inventory-dashboard');
@@ -102,9 +153,9 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('role-dashboard', ['role' => 'finance', ...$dashboardData->forRole('finance')]);
     })->middleware('role:finance,finance_staff')->name('finance-dashboard');
 
-    Route::get('hr-dashboard', function (WorkspaceDashboardData $dashboardData) {
-        return Inertia::render('role-dashboard', ['role' => 'hr', ...$dashboardData->forRole('hr')]);
-    })->middleware('role:hr,hr_employee')->name('hr-dashboard');
+    Route::get('hr-dashboard', [HrController::class, 'dashboard'])
+        ->middleware('role:hr,hr_employee')
+        ->name('hr-dashboard');
 
     Route::get('farmer-registry', function () {
         return Inertia::render('farmer-registry', [
@@ -160,6 +211,8 @@ Route::middleware(['auth'])->group(function () {
                 'depotCount' => DB::table('erp_depots')->count(),
                 'transferCount' => DB::table('erp_audit_events')->where('module', 'inventory')->where('action', 'transferred')->count(),
                 'reconciliationCount' => DB::table('erp_audit_events')->where('module', 'inventory')->where('action', 'reconciled')->count(),
+                'sensorReadingCount' => DB::table('erp_silo_sensor_readings')->count(),
+                'weighbridgeSlipCount' => DB::table('erp_weighbridge_slips')->count(),
             ],
             'stockRecords' => DB::table('erp_stock_levels')
                 ->join('erp_commodities', 'erp_commodities.id', '=', 'erp_stock_levels.commodity_id')
@@ -228,6 +281,37 @@ Route::middleware(['auth'])->group(function () {
                     'erp_audit_events.target_id',
                     'users.name as user_name',
                 ]),
+            'recentSensorReadings' => DB::table('erp_silo_sensor_readings')
+                ->latest('id')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'sensor_code',
+                    'commodity_name',
+                    'depot_name',
+                    'lot_no',
+                    'level_percent',
+                    'temperature_c',
+                    'moisture_percent',
+                    'status',
+                    'created_at',
+                ]),
+            'recentWeighbridgeSlips' => DB::table('erp_weighbridge_slips')
+                ->latest('id')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'slip_number',
+                    'direction',
+                    'commodity_name',
+                    'depot_name',
+                    'lot_no',
+                    'truck_plate',
+                    'gross_weight',
+                    'tare_weight',
+                    'net_weight',
+                    'created_at',
+                ]),
             'commodities' => DB::table('erp_commodities')->orderBy('name')->get(['id', 'name', 'sku']),
             'batches' => DB::table('erp_stock_batches')->orderByDesc('id')->get(['id', 'lot_no', 'commodity_id']),
         ]);
@@ -292,40 +376,9 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->middleware('role:executive,admin,operations_director,sales,sales_staff')->name('sales-commodities');
 
-    Route::get('hr-workforce', function () {
-        return Inertia::render('hr-workforce', [
-            'workforceMetrics' => [
-                'activeWorkforce' => DB::table('erp_employees')->where('is_active', true)->count(),
-                'workforceReadiness' => DB::table('erp_employees')->count(),
-                'fieldDispatch' => DB::table('erp_employees')->whereNotNull('zone_id')->count(),
-                'complianceRecords' => DB::table('erp_audit_events')->where('module', 'hr')->count(),
-            ],
-            'employees' => DB::table('erp_employees')
-                ->join('users', 'users.id', '=', 'erp_employees.user_id')
-                ->leftJoin('erp_zones', 'erp_zones.id', '=', 'erp_employees.zone_id')
-                ->leftJoin('erp_depots', 'erp_depots.id', '=', 'erp_employees.depot_id')
-                ->orderBy('users.name')
-                ->get([
-                    'erp_employees.employee_code',
-                    'erp_employees.id',
-                    'erp_employees.user_id',
-                    'erp_employees.department',
-                    'erp_employees.position',
-                    'erp_employees.is_active',
-                    'erp_employees.zone_id',
-                    'erp_employees.depot_id',
-                    'users.name',
-                    'users.email',
-                    'erp_zones.name as zone_name',
-                    'erp_depots.name as depot_name',
-                ]),
-            'availableUsers' => DB::table('users')
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
-            'zones' => DB::table('erp_zones')->orderBy('zone_no')->get(['id', 'name']),
-            'depots' => DB::table('erp_depots')->orderBy('name')->get(['id', 'name']),
-        ]);
-    })->middleware('role:executive,admin,operations_director,hr,hr_employee')->name('hr-workforce');
+    Route::get('hr-workforce', [HrController::class, 'workforce'])
+        ->middleware('role:executive,admin,operations_director,hr,hr_employee')
+        ->name('hr-workforce');
 
     Route::get('system-admin', function () {
         return Inertia::render('system-admin', [
@@ -499,6 +552,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('stock-reconciliations', [StockMovementController::class, 'reconcile'])
         ->middleware('role:executive,admin,operations_director,inventory,inventory_staff')
         ->name('stock-reconciliations.store');
+
+    Route::post('silo-sensor-readings', [SiloSensorReadingController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,inventory,inventory_staff')
+        ->name('silo-sensor-readings.store');
+
+    Route::post('weighbridge-slips', [WeighbridgeSlipController::class, 'store'])
+        ->middleware('role:executive,admin,operations_director,inventory,inventory_staff')
+        ->name('weighbridge-slips.store');
 
     Route::post('trade-contracts', [TradeContractController::class, 'store'])
         ->middleware('role:executive,admin,operations_director,sales,sales_staff')

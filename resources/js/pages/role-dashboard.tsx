@@ -546,12 +546,34 @@ export default function RoleDashboard({
     records,
     inventoryCharts,
     roleCharts,
+    dashboardData,
 }: {
     role: Role;
     metrics: DashboardMetric[];
     records: DashboardRecord[];
     inventoryCharts?: InventoryCharts;
     roleCharts?: RoleCharts;
+    dashboardData?: {
+        metrics: {
+            fieldReadiness?: number;
+            attendanceSummary?: {
+                present?: number;
+                late?: number;
+                absent?: number;
+                onLeave?: number;
+                restDay?: number;
+            };
+            openStaffingActions?: number;
+            attendanceActivity?: number;
+        };
+        pendingLeaveRequests?: Array<{ id: number; employee_name: string; leave_type: string; start_date: string; end_date: string; status: string; reason?: string }>;
+        upcomingSchedules?: Array<{ id: number; employee_name: string; shift_type: string; shift_date: string; status: string; zone_name?: string }>;
+        recentActivity?: Array<{ id: number; action: string; user_name?: string; created_at: string }>;
+        staffingActions?: Array<{ id: number; title: string; action_type: string; status: string; zone_name?: string }>;
+        departmentBreakdown?: Array<{ department: string; total: number }>;
+        zones?: Array<{ id: number; name: string; zone_no?: number }>;
+        depots?: Array<{ id: number; name: string; code?: string }>;
+    };
 }) {
     const { auth } = usePage<SharedData>().props;
     const [recordSearch, setRecordSearch] = useState('');
@@ -665,6 +687,8 @@ export default function RoleDashboard({
                             </div>
                         )}
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Live workspace metrics">
+                            {metrics.length > 0 ? (
+                            <>
                             {metrics.map(({ label, value }, index) => {
                                 const Icon =
                                     role === 'inventory'
@@ -711,7 +735,10 @@ export default function RoleDashboard({
                                             Live from SQLite
                                         </p>
                                     </div>
-
+                                );
+                            })}
+                            {role === 'hr' && dashboardData && (
+                                <>
                                     <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                                         <div className="flex items-start justify-between">
                                             <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">FIELD READINESS</p>
@@ -752,6 +779,8 @@ export default function RoleDashboard({
                                         <p className="mt-2 text-xs text-[#b54708] dark:text-amber-400">Action required</p>
                                     </div>
                                 </>
+                            )}
+                            </>
                             ) : (
                                 content.metrics.map((label, index) => {
                                     const Icon = metricIcons[index];

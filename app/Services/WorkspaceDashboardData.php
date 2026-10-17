@@ -322,6 +322,8 @@ class WorkspaceDashboardData
                 'label' => $month->format("M 'y"),
                 'transfers' => 0.0,
                 'reconciliationVariance' => 0.0,
+                'weighbridgeInbound' => 0.0,
+                'weighbridgeOutbound' => 0.0,
             ];
         }
 
@@ -344,6 +346,25 @@ class WorkspaceDashboardData
                         $months[$monthKey]['transfers'] += (float) ($payload['quantity'] ?? 0);
                     } else {
                         $months[$monthKey]['reconciliationVariance'] += (float) ($payload['variance_qty'] ?? 0);
+                    }
+                }
+            });
+
+        DB::table('erp_weighbridge_slips')
+            ->where('created_at', '>=', $firstMonth->toDateTimeString())
+            ->orderBy('id')
+            ->chunkById(500, function ($slips) use (&$months): void {
+                foreach ($slips as $slip) {
+                    $monthKey = Carbon::parse($slip->created_at)->format('Y-m');
+
+                    if (! isset($months[$monthKey])) {
+                        continue;
+                    }
+
+                    if ($slip->direction === 'inbound') {
+                        $months[$monthKey]['weighbridgeInbound'] += (float) $slip->net_weight;
+                    } else {
+                        $months[$monthKey]['weighbridgeOutbound'] += (float) $slip->net_weight;
                     }
                 }
             });

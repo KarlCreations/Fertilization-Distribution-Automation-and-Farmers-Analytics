@@ -141,6 +141,8 @@ class WorkspaceNotificationFeed
             'deleted' => 'deleted',
             'transferred' => 'stock transferred',
             'reconciled' => 'stock reconciled',
+            'sensor_recorded' => 'sensor reading recorded',
+            'weighed' => 'weighbridge slip recorded',
             default => 'changed',
         };
 
@@ -165,6 +167,25 @@ class WorkspaceNotificationFeed
                 'Count adjusted from %s MT to %s MT.',
                 $details['previous_qty'] ?? '0',
                 $details['counted_qty'] ?? '0',
+            );
+        }
+
+        if ($module === 'inventory' && $action === 'sensor_recorded' && is_array($details)) {
+            return sprintf(
+                '%s%% silo fill at %s.',
+                $details['level_percent'] ?? '0',
+                $details['depot_name'] ?? '—',
+            );
+        }
+
+        if ($module === 'inventory' && $action === 'weighed' && is_array($details)) {
+            $direction = ($details['direction'] ?? '') === 'inbound' ? 'received' : 'dispatched';
+
+            return sprintf(
+                '%s MT %s at %s.',
+                $details['net_weight'] ?? '0',
+                $direction,
+                $details['depot_name'] ?? '—',
             );
         }
 
