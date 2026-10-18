@@ -1,64 +1,54 @@
-import { Head, usePage, usePoll } from '@inertiajs/react';
-import { Boxes, Database, Gauge, Leaf, Package, Search, ShieldCheck, TriangleAlert, UsersRound, WalletCards, Warehouse } from 'lucide-react';
+import { Head, router, useForm, usePage, usePoll } from '@inertiajs/react';
+import {
+    Boxes,
+    FileText,
+    Gauge,
+    Leaf,
+    MapPinned,
+    Package,
+    Search,
+    ShieldCheck,
+    TriangleAlert,
+    UserCheck,
+    UsersRound,
+    Warehouse,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import WorkspaceHelpButton from '@/components/workspace-help-button';
 import WorkspaceNotifications from '@/components/workspace-notifications';
 import WorkspaceSidebar, { WorkspaceMobileNavigation } from '@/components/workspace-sidebar';
-import { useState } from 'react';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import {
-    Activity,
-    Bell,
-    CalendarClock,
-    CheckCircle2,
-    CircleHelp,
-    Clock,
-    Database,
-    FileText,
-    Leaf,
-    MapPinned,
-    Menu,
-    Plus,
-    Search,
-    ShieldCheck,
-    UserCheck,
-    UserMinus,
-    UsersRound,
-    UserX,
-    Warehouse,
-    X,
-    XCircle,
-} from 'lucide-react';
-
-import WorkspaceSidebar from '@/components/workspace-sidebar';
-import WorkspaceHeader from '@/components/workspace-header';
-import PowerBiReport from '@/components/power-bi-report';
 import { type SharedData } from '@/types';
 
 type Role = 'inventory' | 'sales' | 'finance' | 'hr' | 'subsidy';
 
-const dashboardContent: Record<Role, { title: string; description: string }> = {
+const dashboardContent: Record<Role, { title: string; description: string; metrics: string[] }> = {
     subsidy: {
         title: 'Farmer management dashboard',
         description:
             'Coordinate farmer registration, field verification, subsidy eligibility, and fertilizer condition visibility for field operations.',
+        metrics: ['Registered farmers', 'Verification queue', 'Active quota records', 'Fertilizer disbursed'],
     },
     inventory: {
         title: 'Inventory operations dashboard',
         description: 'Monitor stock, warehouse activity, replenishment, and fulfillment from one focused workspace.',
+        metrics: ['Stock on hand', 'Depots', 'Reorder alerts', 'Stock batches'],
     },
     sales: {
         title: 'Sales operations dashboard',
         description: 'Track contracts, orders, commodity movement, and commercial activity as connected data becomes available.',
+        metrics: ['Trade contracts', 'Active contracts', 'Contract volume', 'Trade value'],
     },
     finance: {
         title: 'Finance operations dashboard',
         description: 'Prepare treasury, disbursement, receivables, and reconciliation workflows for live financial data.',
+        metrics: ['Committed trade value', 'Fertilizer allocated', 'Fertilizer disbursed', 'Outstanding receivables'],
     },
     hr: {
         title: 'HR operations dashboard',
         description: 'Coordinate workforce records, attendance, field staffing, and compliance from one workspace.',
+        metrics: ['Active workforce', 'Total employees', 'Field assignments', 'HR audit events'],
     },
 };
 
@@ -566,7 +556,15 @@ export default function RoleDashboard({
             openStaffingActions?: number;
             attendanceActivity?: number;
         };
-        pendingLeaveRequests?: Array<{ id: number; employee_name: string; leave_type: string; start_date: string; end_date: string; status: string; reason?: string }>;
+        pendingLeaveRequests?: Array<{
+            id: number;
+            employee_name: string;
+            leave_type: string;
+            start_date: string;
+            end_date: string;
+            status: string;
+            reason?: string;
+        }>;
         upcomingSchedules?: Array<{ id: number; employee_name: string; shift_type: string; shift_date: string; status: string; zone_name?: string }>;
         recentActivity?: Array<{ id: number; action: string; user_name?: string; created_at: string }>;
         staffingActions?: Array<{ id: number; title: string; action_type: string; status: string; zone_name?: string }>;
@@ -586,7 +584,13 @@ export default function RoleDashboard({
     usePoll(30_000, { only: ['metrics', 'records', 'inventoryCharts', 'roleCharts'] });
 
     const [showActionModal, setShowActionModal] = useState(false);
-    const { data: actionData, setData: setActionData, post: postAction, processing: actionProcessing, reset: resetAction } = useForm({
+    const {
+        data: actionData,
+        setData: setActionData,
+        post: postAction,
+        processing: actionProcessing,
+        reset: resetAction,
+    } = useForm({
         title: '',
         action_type: 'dispatch',
         zone_id: '',
@@ -604,10 +608,14 @@ export default function RoleDashboard({
     };
 
     const handleReviewLeave = (id: number, status: 'approved' | 'rejected') => {
-        router.post(route('hr.leave-requests.review', id), {
-            status,
-            admin_notes: status === 'approved' ? 'Approved by HR Manager from dashboard.' : 'Rejected from dashboard.',
-        }, { preserveScroll: true });
+        router.post(
+            route('hr.leave-requests.review', id),
+            {
+                status,
+                admin_notes: status === 'approved' ? 'Approved by HR Manager from dashboard.' : 'Rejected from dashboard.',
+            },
+            { preserveScroll: true },
+        );
     };
 
     return (
@@ -688,110 +696,122 @@ export default function RoleDashboard({
                         )}
                         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Live workspace metrics">
                             {metrics.length > 0 ? (
-                            <>
-                            {metrics.map(({ label, value }, index) => {
-                                const Icon =
-                                    role === 'inventory'
-                                        ? label === 'Stock on hand'
-                                            ? Package
-                                            : label === 'Depots'
-                                              ? Warehouse
-                                              : label === 'Reorder alerts'
-                                                ? TriangleAlert
-                                                : Boxes
-                                        : (metricIcons[index] ?? Package);
-                                const iconTone =
-                                    role !== 'inventory'
-                                        ? 'rounded-md bg-[#eff4ff] text-[#175cd3]'
-                                        : label === 'Reorder alerts'
-                                          ? 'bg-[#fffaeb] text-[#b54708]'
-                                          : label === 'Depots'
-                                            ? 'bg-[#f4f3ff] text-[#6941c6]'
-                                            : 'bg-[#e7f5ef] text-[#087443]';
-                                return (
-                                    <div
-                                        key={label}
-                                        className={`rounded-2xl border bg-white p-5 shadow-[0_8px_28px_rgba(16,24,40,0.045)] transition-shadow hover:shadow-[0_12px_32px_rgba(16,24,40,0.09)] ${
-                                            role === 'inventory'
-                                                ? 'border-[#e7edf2]'
-                                                : 'rounded-lg border-[#eaecf0] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]'
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase">{label}</p>
-                                            <span
-                                                className={`flex size-9 items-center justify-center ${role === 'inventory' ? 'rounded-xl' : ''} ${iconTone}`}
-                                            >
-                                                <Icon className="size-4" />
-                                            </span>
-                                        </div>
-                                        <p
-                                            className={`mt-5 font-semibold tracking-tight text-[#101828] ${role === 'inventory' ? 'text-3xl' : 'text-2xl'}`}
-                                        >
-                                            {typeof value === 'number' ? value.toLocaleString() : value}
-                                        </p>
-                                        <p className="mt-3 flex items-center gap-1.5 text-xs text-[#667085]">
-                                            {role === 'inventory' && <span className="size-1.5 rounded-full bg-[#12b76a]" />}
-                                            Live from SQLite
-                                        </p>
-                                    </div>
-                                );
-                            })}
-                            {role === 'hr' && dashboardData && (
                                 <>
-                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                        <div className="flex items-start justify-between">
-                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">FIELD READINESS</p>
-                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#f4f3ff] dark:bg-gray-800 text-[#6938ef] dark:text-purple-400">
-                                                <MapPinned className="size-4" />
-                                            </span>
-                                        </div>
-                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">{dashboardData.metrics.fieldReadiness} Assigned</p>
-                                        <p className="mt-2 text-xs text-[#175cd3] dark:text-blue-400">Zones & depots active</p>
-                                    </div>
+                                    {metrics.map(({ label, value }, index) => {
+                                        const Icon =
+                                            role === 'inventory'
+                                                ? label === 'Stock on hand'
+                                                    ? Package
+                                                    : label === 'Depots'
+                                                      ? Warehouse
+                                                      : label === 'Reorder alerts'
+                                                        ? TriangleAlert
+                                                        : Boxes
+                                                : (metricIcons[index] ?? Package);
+                                        const iconTone =
+                                            role !== 'inventory'
+                                                ? 'rounded-md bg-[#eff4ff] text-[#175cd3]'
+                                                : label === 'Reorder alerts'
+                                                  ? 'bg-[#fffaeb] text-[#b54708]'
+                                                  : label === 'Depots'
+                                                    ? 'bg-[#f4f3ff] text-[#6941c6]'
+                                                    : 'bg-[#e7f5ef] text-[#087443]';
+                                        return (
+                                            <div
+                                                key={label}
+                                                className={`rounded-2xl border bg-white p-5 shadow-[0_8px_28px_rgba(16,24,40,0.045)] transition-shadow hover:shadow-[0_12px_32px_rgba(16,24,40,0.09)] ${
+                                                    role === 'inventory'
+                                                        ? 'border-[#e7edf2]'
+                                                        : 'rounded-lg border-[#eaecf0] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]'
+                                                }`}
+                                            >
+                                                <div className="flex items-start justify-between">
+                                                    <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase">{label}</p>
+                                                    <span
+                                                        className={`flex size-9 items-center justify-center ${role === 'inventory' ? 'rounded-xl' : ''} ${iconTone}`}
+                                                    >
+                                                        <Icon className="size-4" />
+                                                    </span>
+                                                </div>
+                                                <p
+                                                    className={`mt-5 font-semibold tracking-tight text-[#101828] ${role === 'inventory' ? 'text-3xl' : 'text-2xl'}`}
+                                                >
+                                                    {typeof value === 'number' ? value.toLocaleString() : value}
+                                                </p>
+                                                <p className="mt-3 flex items-center gap-1.5 text-xs text-[#667085]">
+                                                    {role === 'inventory' && <span className="size-1.5 rounded-full bg-[#12b76a]" />}
+                                                    Live from SQLite
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                    {role === 'hr' && dashboardData && (
+                                        <>
+                                            <div className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 dark:bg-gray-900">
+                                                <div className="flex items-start justify-between">
+                                                    <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase dark:text-gray-400">
+                                                        FIELD READINESS
+                                                    </p>
+                                                    <span className="flex size-8 items-center justify-center rounded-md bg-[#f4f3ff] text-[#6938ef] dark:bg-gray-800 dark:text-purple-400">
+                                                        <MapPinned className="size-4" />
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">
+                                                    {dashboardData.metrics.fieldReadiness} Assigned
+                                                </p>
+                                                <p className="mt-2 text-xs text-[#175cd3] dark:text-blue-400">Zones & depots active</p>
+                                            </div>
 
-                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                        <div className="flex items-start justify-between">
-                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">ATTENDANCE SUMMARY</p>
-                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#ecfdf3] dark:bg-gray-800 text-[#067647] dark:text-emerald-400">
-                                                <UserCheck className="size-4" />
-                                            </span>
-                                        </div>
-                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">
-                                            {dashboardData.metrics.attendanceSummary?.present ?? 0} Present
-                                        </p>
-                                        <p className="mt-2 text-xs text-[#667085] dark:text-gray-400">
-                                            Late: {dashboardData.metrics.attendanceSummary?.late ?? 0} | Absent:{' '}
-                                            {dashboardData.metrics.attendanceSummary?.absent ?? 0} | Leave:{' '}
-                                            {dashboardData.metrics.attendanceSummary?.onLeave ?? 0} | Rest day:{' '}
-                                            {dashboardData.metrics.attendanceSummary?.restDay ?? 0}
-                                        </p>
-                                    </div>
+                                            <div className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 dark:bg-gray-900">
+                                                <div className="flex items-start justify-between">
+                                                    <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase dark:text-gray-400">
+                                                        ATTENDANCE SUMMARY
+                                                    </p>
+                                                    <span className="flex size-8 items-center justify-center rounded-md bg-[#ecfdf3] text-[#067647] dark:bg-gray-800 dark:text-emerald-400">
+                                                        <UserCheck className="size-4" />
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">
+                                                    {dashboardData.metrics.attendanceSummary?.present ?? 0} Present
+                                                </p>
+                                                <p className="mt-2 text-xs text-[#667085] dark:text-gray-400">
+                                                    Late: {dashboardData.metrics.attendanceSummary?.late ?? 0} | Absent:{' '}
+                                                    {dashboardData.metrics.attendanceSummary?.absent ?? 0} | Leave:{' '}
+                                                    {dashboardData.metrics.attendanceSummary?.onLeave ?? 0} | Rest day:{' '}
+                                                    {dashboardData.metrics.attendanceSummary?.restDay ?? 0}
+                                                </p>
+                                            </div>
 
-                                    <div className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                                        <div className="flex items-start justify-between">
-                                            <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">OPEN STAFFING ACTIONS</p>
-                                            <span className="flex size-8 items-center justify-center rounded-md bg-[#fffaeb] dark:bg-gray-800 text-[#b54708] dark:text-amber-400">
-                                                <FileText className="size-4" />
-                                            </span>
-                                        </div>
-                                        <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">{dashboardData.metrics.openStaffingActions}</p>
-                                        <p className="mt-2 text-xs text-[#b54708] dark:text-amber-400">Action required</p>
-                                    </div>
+                                            <div className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 dark:bg-gray-900">
+                                                <div className="flex items-start justify-between">
+                                                    <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase dark:text-gray-400">
+                                                        OPEN STAFFING ACTIONS
+                                                    </p>
+                                                    <span className="flex size-8 items-center justify-center rounded-md bg-[#fffaeb] text-[#b54708] dark:bg-gray-800 dark:text-amber-400">
+                                                        <FileText className="size-4" />
+                                                    </span>
+                                                </div>
+                                                <p className="mt-3 text-2xl font-semibold text-[#101828] dark:text-white">
+                                                    {dashboardData.metrics.openStaffingActions}
+                                                </p>
+                                                <p className="mt-2 text-xs text-[#b54708] dark:text-amber-400">Action required</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </>
-                            )}
-                            </>
                             ) : (
                                 content.metrics.map((label, index) => {
                                     const Icon = metricIcons[index];
                                     return (
                                         <div
                                             key={label}
-                                            className="rounded-lg border border-[#eaecf0] dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                                            className="rounded-lg border border-[#eaecf0] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] dark:border-gray-800 dark:bg-gray-900"
                                         >
                                             <div className="flex items-start justify-between">
-                                                <p className="text-xs font-semibold tracking-wide text-[#667085] dark:text-gray-400 uppercase">{label}</p>
-                                                <span className="flex size-8 items-center justify-center rounded-md bg-[#eff4ff] dark:bg-gray-800 text-[#175cd3] dark:text-blue-400">
+                                                <p className="text-xs font-semibold tracking-wide text-[#667085] uppercase dark:text-gray-400">
+                                                    {label}
+                                                </p>
+                                                <span className="flex size-8 items-center justify-center rounded-md bg-[#eff4ff] text-[#175cd3] dark:bg-gray-800 dark:text-blue-400">
                                                     <Icon className="size-4" />
                                                 </span>
                                             </div>
@@ -851,10 +871,14 @@ export default function RoleDashboard({
             {/* Staffing Action Modal */}
             {showActionModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl border border-transparent dark:border-gray-800">
-                        <div className="flex items-center justify-between border-b border-[#eaecf0] dark:border-gray-800 pb-3">
+                    <div className="w-full max-w-md rounded-lg border border-transparent bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+                        <div className="flex items-center justify-between border-b border-[#eaecf0] pb-3 dark:border-gray-800">
                             <h2 className="text-lg font-semibold text-[#101828] dark:text-white">Create Staffing Action</h2>
-                            <button type="button" onClick={() => setShowActionModal(false)} className="text-[#667085] dark:text-gray-400 hover:text-[#101828] dark:hover:text-white">
+                            <button
+                                type="button"
+                                onClick={() => setShowActionModal(false)}
+                                className="text-[#667085] hover:text-[#101828] dark:text-gray-400 dark:hover:text-white"
+                            >
                                 <X className="size-5" />
                             </button>
                         </div>
@@ -867,7 +891,7 @@ export default function RoleDashboard({
                                     value={actionData.title}
                                     onChange={(e) => setActionData('title', e.target.value)}
                                     placeholder="e.g. Dispatch 4 Field Officers to Zone 1"
-                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] bg-white p-2 text-xs text-[#101828] outline-none focus:border-[#175cd3] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
                             <div>
@@ -875,7 +899,7 @@ export default function RoleDashboard({
                                 <select
                                     value={actionData.action_type}
                                     onChange={(e) => setActionData('action_type', e.target.value)}
-                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] bg-white p-2 text-xs text-[#101828] outline-none focus:border-[#175cd3] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 >
                                     <option value="dispatch">Field Dispatch</option>
                                     <option value="transfer">Zone Transfer</option>
@@ -888,7 +912,7 @@ export default function RoleDashboard({
                                 <select
                                     value={actionData.zone_id}
                                     onChange={(e) => setActionData('zone_id', e.target.value)}
-                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                    className="mt-1 w-full rounded-md border border-[#d0d5dd] bg-white p-2 text-xs text-[#101828] outline-none focus:border-[#175cd3] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 >
                                     <option value="">Select Zone</option>
                                     {dashboardData?.zones.map((z) => (
@@ -904,14 +928,14 @@ export default function RoleDashboard({
                                     value={actionData.details}
                                     onChange={(e) => setActionData('details', e.target.value)}
                                     placeholder="Add operational details..."
-                                    className="mt-1 h-20 w-full rounded-md border border-[#d0d5dd] dark:border-gray-700 bg-white dark:bg-gray-800 p-2 text-xs text-[#101828] dark:text-white outline-none focus:border-[#175cd3]"
+                                    className="mt-1 h-20 w-full rounded-md border border-[#d0d5dd] bg-white p-2 text-xs text-[#101828] outline-none focus:border-[#175cd3] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
-                            <div className="flex justify-end gap-2 pt-2 border-t border-[#eaecf0] dark:border-gray-800">
+                            <div className="flex justify-end gap-2 border-t border-[#eaecf0] pt-2 dark:border-gray-800">
                                 <button
                                     type="button"
                                     onClick={() => setShowActionModal(false)}
-                                    className="rounded-md border border-[#d0d5dd] dark:border-gray-700 px-4 py-2 text-xs font-medium text-[#344054] dark:text-gray-300 hover:bg-[#f9fafb] dark:hover:bg-gray-800"
+                                    className="rounded-md border border-[#d0d5dd] px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb] dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                                 >
                                     Cancel
                                 </button>
