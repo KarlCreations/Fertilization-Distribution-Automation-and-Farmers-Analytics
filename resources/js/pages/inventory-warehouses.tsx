@@ -669,19 +669,14 @@ export default function InventoryWarehouses({
                                                 className="h-44"
                                             />
                                         ) : (
-                                            <div className="grid gap-2">
+                                            <div className="grid max-h-[280px] gap-2 overflow-y-auto">
                                                 {reorderRecords.slice(0, 5).map((stock) => (
-                                                    <div
-                                                        key={stock.id}
-                                                        className="flex items-center justify-between gap-3 rounded-md bg-[#fffaeb] p-3"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="truncate text-xs font-medium text-[#344054]">
-                                                                {stock.commodity_name} · {stock.lot_no}
-                                                            </p>
-                                                            <p className="mt-1 truncate text-[10px] text-[#667085]">{stock.depot_name}</p>
-                                                        </div>
-                                                        <span className="shrink-0 text-xs font-semibold text-[#b54708]">
+                                                    <div key={stock.id} className="rounded-md bg-[#fffaeb] p-3">
+                                                        <p className="text-xs font-medium break-words text-[#344054]">
+                                                            {stock.commodity_name} · {stock.lot_no}
+                                                        </p>
+                                                        <p className="mt-1 text-[10px] break-words text-[#667085]">{stock.depot_name}</p>
+                                                        <span className="mt-1.5 block text-xs font-semibold text-[#b54708]">
                                                             {Number(stock.on_hand_qty).toLocaleString()} MT
                                                         </span>
                                                     </div>
@@ -708,19 +703,14 @@ export default function InventoryWarehouses({
                                                 className="h-44"
                                             />
                                         ) : (
-                                            <div className="grid gap-2">
+                                            <div className="grid max-h-[280px] gap-2 overflow-y-auto">
                                                 {recentSensorReadings.map((reading) => (
-                                                    <div
-                                                        key={reading.id}
-                                                        className="flex items-center justify-between rounded-md border border-[#eaecf0] px-3 py-2.5"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="truncate text-sm font-medium text-[#101828]">{reading.sensor_code}</p>
-                                                            <p className="mt-0.5 truncate text-xs text-[#667085]">
-                                                                {reading.commodity_name} · {reading.depot_name} · {reading.lot_no}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex shrink-0 items-center gap-3 text-xs">
+                                                    <div key={reading.id} className="rounded-md border border-[#eaecf0] px-3 py-2.5">
+                                                        <p className="text-sm font-medium break-words text-[#101828]">{reading.sensor_code}</p>
+                                                        <p className="mt-0.5 text-xs break-words text-[#667085]">
+                                                            {reading.commodity_name} · {reading.depot_name} · {reading.lot_no}
+                                                        </p>
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                                             <span className="font-medium text-[#475467]">
                                                                 {Number(reading.level_percent).toFixed(1)}%
                                                             </span>
@@ -760,19 +750,14 @@ export default function InventoryWarehouses({
                                                 className="h-44"
                                             />
                                         ) : (
-                                            <div className="grid gap-2">
+                                            <div className="grid max-h-[280px] gap-2 overflow-y-auto">
                                                 {recentWeighbridgeSlips.map((slip) => (
-                                                    <div
-                                                        key={slip.id}
-                                                        className="flex items-center justify-between rounded-md border border-[#eaecf0] px-3 py-2.5"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="truncate text-sm font-medium text-[#101828]">{slip.slip_number}</p>
-                                                            <p className="mt-0.5 truncate text-xs text-[#667085]">
-                                                                {slip.commodity_name} · {slip.depot_name} · {slip.truck_plate}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex shrink-0 items-center gap-3 text-xs">
+                                                    <div key={slip.id} className="rounded-md border border-[#eaecf0] px-3 py-2.5">
+                                                        <p className="text-sm font-medium break-words text-[#101828]">{slip.slip_number}</p>
+                                                        <p className="mt-0.5 text-xs break-words text-[#667085]">
+                                                            {slip.commodity_name} · {slip.depot_name} · {slip.truck_plate}
+                                                        </p>
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 font-medium capitalize ${
                                                                     slip.direction === 'inbound'
