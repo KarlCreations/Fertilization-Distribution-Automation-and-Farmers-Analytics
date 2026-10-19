@@ -1,7 +1,20 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, LogOut, Menu, Package, Settings, Sprout, Truck, UserCog, UsersRound, WalletCards, X } from 'lucide-react';
+import {
+    CalendarClock,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Package,
+    Settings,
+    Sprout,
+    Truck,
+    UserCog,
+    UserRound,
+    UsersRound,
+    WalletCards,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
-import { CalendarClock, LayoutDashboard, LogOut, Package, Settings, Sprout, Truck, UserCog, UserRound, UsersRound, WalletCards } from 'lucide-react';
 
 import WorkspaceFlash from '@/components/workspace-flash';
 import { type SharedData } from '@/types';
