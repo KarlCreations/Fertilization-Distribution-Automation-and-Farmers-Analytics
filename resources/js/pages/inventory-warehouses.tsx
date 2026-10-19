@@ -659,7 +659,7 @@ export default function InventoryWarehouses({
                                     </div>
                                 </Panel>
                             </div>
-                            <aside className="grid content-start gap-4">
+                            <aside className="grid min-w-0 content-start gap-4 overflow-hidden">
                                 <Panel title="Auto-procurement" icon={ClipboardList}>
                                     <div className="px-5 pb-5">
                                         {reorderRecords.length === 0 ? (
